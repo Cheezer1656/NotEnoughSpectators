@@ -28,6 +28,8 @@ loom {
 		}
 	}
 
+	accessWidenerPath = file("src/main/resources/not-enough-spectators.accesswidener")
+
 }
 
 dependencies {
