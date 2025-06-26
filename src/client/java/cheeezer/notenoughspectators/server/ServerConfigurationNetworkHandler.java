@@ -1,12 +1,18 @@
 package cheeezer.notenoughspectators.server;
 
+import cheeezer.notenoughspectators.PacketSniffer;
 import com.mojang.authlib.GameProfile;
 import com.mojang.logging.LogUtils;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import net.fabricmc.fabric.api.networking.v1.FabricServerConfigurationNetworkHandler;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.DisconnectionInfo;
 import net.minecraft.network.RegistryByteBuf;
+import net.minecraft.network.encoding.VarInts;
+import net.minecraft.network.handler.DecoderHandler;
+import net.minecraft.network.handler.EncoderHandler;
 import net.minecraft.network.listener.ServerConfigurationPacketListener;
 import net.minecraft.network.listener.TickablePacketListener;
 import net.minecraft.network.packet.BrandCustomPayload;
@@ -16,7 +22,9 @@ import net.minecraft.network.packet.c2s.common.SyncedClientOptions;
 import net.minecraft.network.packet.c2s.config.ReadyC2SPacket;
 import net.minecraft.network.packet.c2s.config.SelectKnownPacksC2SPacket;
 import net.minecraft.network.packet.s2c.common.CustomPayloadS2CPacket;
+import net.minecraft.network.packet.s2c.common.DisconnectS2CPacket;
 import net.minecraft.network.state.PlayStateFactories;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.server.network.*;
 import net.minecraft.text.Text;
 import org.jetbrains.annotations.Nullable;
@@ -37,6 +45,8 @@ public class ServerConfigurationNetworkHandler
     @Nullable
     private ServerPlayerConfigurationTask currentTask;
     private SyncedClientOptions syncedOptions;
+
+    private net.minecraft.network.state.NetworkState state;
 
     public ServerConfigurationNetworkHandler(ClientConnection clientConnection, ConnectedClientData connectedClientData) {
         super(clientConnection, connectedClientData);
@@ -91,10 +101,38 @@ public class ServerConfigurationNetworkHandler
     @Override
     public void onReady(ReadyC2SPacket packet) {
         this.onTaskFinished(JoinWorldTask.KEY);
-        System.out.println("MC SERVER: "+MinecraftClient.getInstance().getServer()); // TODO: Remove this line
-        this.connection.transitionOutbound(PlayStateFactories.S2C.bind(RegistryByteBuf.makeFactory(MinecraftClient.getInstance().getServer().getRegistryManager())));
+        System.out.println("MC SERVER: "+MinecraftClient.getInstance().getServer());
+        DynamicRegistryManager.Immutable registryManager = MinecraftClient.getInstance().getServer().getRegistryManager();
+        this.connection.transitionOutbound(PlayStateFactories.S2C.bind(RegistryByteBuf.makeFactory(registryManager)));
 
-        this.disconnect(Text.of("Testing disconnect")); // TODO: Remove this line
+        state = this.connection.channel.pipeline().get(EncoderHandler.class).state;
+        this.connection.channel.pipeline().remove("encoder");
+
+//        DisconnectS2CPacket disconnectS2CPacket = new DisconnectS2CPacket(Text.of("Ready to play!"));
+//        ByteBuf buf = Unpooled.buffer();
+//        state.codec().encode(buf, disconnectS2CPacket);
+//        this.connection.channel.writeAndFlush(buf);
+
+        new Thread(() -> {
+            System.out.println("Thread started to send packets");
+            try {
+                Thread.sleep(1000); // Wait for the server to be ready
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            System.out.println("Sending packets to client");
+            for (ByteBuf buf : PacketSniffer.getPackets()) {
+                System.out.println("\n");
+                for (int i = 0; i < buf.readableBytes(); i++) {
+                    System.out.printf("%02X ", buf.getByte(i));
+                }
+                this.connection.channel.writeAndFlush(buf);
+            }
+//            DisconnectS2CPacket disconnectS2CPacket = new DisconnectS2CPacket(Text.of("Ready to play!"));
+//            ByteBuf buf = Unpooled.buffer();
+//            state.codec().encode(buf, disconnectS2CPacket);
+//            this.connection.channel.writeAndFlush(buf);
+        }).start();
     }
 
     @Override

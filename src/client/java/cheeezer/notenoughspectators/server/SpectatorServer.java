@@ -1,5 +1,6 @@
 package cheeezer.notenoughspectators.server;
 
+import cheeezer.notenoughspectators.Ticker;
 import com.google.common.collect.Lists;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -56,11 +57,13 @@ public class SpectatorServer extends Thread implements QueryableServer {
                             connections.add(clientConnection);
                             clientConnection.addFlowControlHandler(channelPipeline);
                             clientConnection.setInitialPacketListener(new ServerHandshakeNetworkHandler(SpectatorServer.this, clientConnection));
+                            channel.pipeline().remove("sniffer");
                         }
                     }).option(ChannelOption.SO_BACKLOG, 128)
                     .childOption(ChannelOption.SO_KEEPALIVE, true);
 
             try {
+                new Ticker(connections).start();
                 ChannelFuture f = b.bind(port).sync();
                 f.channel().closeFuture().sync();
             } catch (InterruptedException e) {
@@ -77,7 +80,7 @@ public class SpectatorServer extends Thread implements QueryableServer {
     }
 
     public int getNetworkCompressionThreshold() {
-        return 256; // Default compression threshold
+        return -1; // TODO: Set to 256 once everything else is working
     }
 
     @Override
