@@ -1,24 +1,25 @@
 package cheeezer.notenoughspectators.server;
 
-import cheeezer.notenoughspectators.Ticker;
 import com.google.common.collect.Lists;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.flow.FlowControlHandler;
 import io.netty.handler.timeout.ReadTimeoutHandler;
+import net.minecraft.SharedConstants;
 import net.minecraft.network.ClientConnection;
-import net.minecraft.network.NetworkSide;
-import net.minecraft.network.QueryableServer;
-import net.minecraft.network.RateLimitedConnection;
-import net.minecraft.network.handler.LegacyQueryHandler;
+import net.minecraft.network.handler.*;
+import net.minecraft.network.state.HandshakeStates;
 import net.minecraft.server.ServerMetadata;
+import net.minecraft.text.Text;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
-public class SpectatorServer extends Thread implements QueryableServer {
+public class SpectatorServer extends Thread {
     private final int port;
     private final int rateLimit;
     final List<ClientConnection> connections = Collections.synchronizedList(Lists.newArrayList());
@@ -49,21 +50,18 @@ public class SpectatorServer extends Thread implements QueryableServer {
                             } catch (ChannelException ignored) {
                             }
 
-                            ChannelPipeline channelPipeline = channel.pipeline().addLast("timeout", new ReadTimeoutHandler(30));
-//                            channelPipeline.addLast("legacy_query", new LegacyQueryHandler(SpectatorServer.this));
-
-                            ClientConnection.addHandlers(channelPipeline, NetworkSide.SERVERBOUND, false, null);
-                            ClientConnection clientConnection = rateLimit > 0 ? new RateLimitedConnection(rateLimit) : new ClientConnection(NetworkSide.SERVERBOUND);
-                            connections.add(clientConnection);
-                            clientConnection.addFlowControlHandler(channelPipeline);
-                            clientConnection.setInitialPacketListener(new ServerHandshakeNetworkHandler(SpectatorServer.this, clientConnection));
-                            channel.pipeline().remove("sniffer");
+                            channel.pipeline().addLast("timeout", new ReadTimeoutHandler(30))
+                                    .addLast("splitter", new SplitterHandler(null))
+                                    .addLast(new FlowControlHandler())
+                                    .addLast("decoder", new DecoderHandler<>(HandshakeStates.C2S))
+                                    .addLast("prepender", new SizePrepender())
+                                    .addLast("outbound_config", new NetworkStateTransitions.OutboundConfigurer())
+                                    .addLast("handler", new SpectatorServerNetworkHandler(SpectatorServer.this));
                         }
                     }).option(ChannelOption.SO_BACKLOG, 128)
                     .childOption(ChannelOption.SO_KEEPALIVE, true);
 
             try {
-                new Ticker(connections).start();
                 ChannelFuture f = b.bind(port).sync();
                 f.channel().closeFuture().sync();
             } catch (InterruptedException e) {
@@ -76,30 +74,6 @@ public class SpectatorServer extends Thread implements QueryableServer {
     }
 
     public ServerMetadata getServerMetadata() {
-        return null;//new ServerMetadata();
-    }
-
-    public int getNetworkCompressionThreshold() {
-        return -1; // TODO: Set to 256 once everything else is working
-    }
-
-    @Override
-    public String getServerMotd() {
-        return "A NotEnoughSpectators server";
-    }
-
-    @Override
-    public String getVersion() {
-        return "1.21.6";
-    }
-
-    @Override
-    public int getCurrentPlayerCount() {
-        return 0;
-    }
-
-    @Override
-    public int getMaxPlayerCount() {
-        return 1000;
+        return new ServerMetadata(Text.of("A NotEnoughSpectators server"), Optional.empty(), Optional.of(new ServerMetadata.Version(SharedConstants.getGameVersion().name(), SharedConstants.getProtocolVersion())), Optional.empty(), false);
     }
 }

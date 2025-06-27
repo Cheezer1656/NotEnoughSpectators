@@ -23,6 +23,7 @@ import net.minecraft.network.packet.c2s.config.ReadyC2SPacket;
 import net.minecraft.network.packet.c2s.config.SelectKnownPacksC2SPacket;
 import net.minecraft.network.packet.s2c.common.CustomPayloadS2CPacket;
 import net.minecraft.network.packet.s2c.common.DisconnectS2CPacket;
+import net.minecraft.network.state.HandshakeStates;
 import net.minecraft.network.state.PlayStateFactories;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.server.network.*;
@@ -105,34 +106,26 @@ public class ServerConfigurationNetworkHandler
         DynamicRegistryManager.Immutable registryManager = MinecraftClient.getInstance().getServer().getRegistryManager();
         this.connection.transitionOutbound(PlayStateFactories.S2C.bind(RegistryByteBuf.makeFactory(registryManager)));
 
-        state = this.connection.channel.pipeline().get(EncoderHandler.class).state;
-        this.connection.channel.pipeline().remove("encoder");
+        this.connection.send(new DisconnectS2CPacket(Text.of("Configuration complete, ready to play!")));
+
+//        state = this.connection.channel.pipeline().get(EncoderHandler.class).state;
+//        this.connection.channel.pipeline().remove("encoder");
 
 //        DisconnectS2CPacket disconnectS2CPacket = new DisconnectS2CPacket(Text.of("Ready to play!"));
 //        ByteBuf buf = Unpooled.buffer();
 //        state.codec().encode(buf, disconnectS2CPacket);
 //        this.connection.channel.writeAndFlush(buf);
 
-        new Thread(() -> {
-            System.out.println("Thread started to send packets");
-            try {
-                Thread.sleep(1000); // Wait for the server to be ready
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            System.out.println("Sending packets to client");
-            for (ByteBuf buf : PacketSniffer.getPackets()) {
-                System.out.println("\n");
-                for (int i = 0; i < buf.readableBytes(); i++) {
-                    System.out.printf("%02X ", buf.getByte(i));
-                }
-                this.connection.channel.writeAndFlush(buf);
-            }
+        System.out.println("Sending packets to client");
+        for (ByteBuf buf : PacketSniffer.getPlayPackets()) {
+//                if (buf.readByte() == 43) break;
+            this.connection.channel.writeAndFlush(buf);
+        }
+        System.out.println("Packets sent to client");
 //            DisconnectS2CPacket disconnectS2CPacket = new DisconnectS2CPacket(Text.of("Ready to play!"));
 //            ByteBuf buf = Unpooled.buffer();
 //            state.codec().encode(buf, disconnectS2CPacket);
 //            this.connection.channel.writeAndFlush(buf);
-        }).start();
     }
 
     @Override

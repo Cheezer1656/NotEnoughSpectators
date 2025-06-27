@@ -4,7 +4,9 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "ClientConnectionMixin",
-    "MinecraftClientMixin"
+    "MinecraftClientMixin",
+    "EncoderHandlerMixin",
+    "DecoderHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
