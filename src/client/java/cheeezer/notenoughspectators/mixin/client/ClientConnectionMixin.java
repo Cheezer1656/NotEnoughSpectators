@@ -38,8 +38,6 @@ public class ClientConnectionMixin {
 
     @Shadow private volatile @Nullable PacketListener packetListener;
 
-    @Unique private static int calls = 0;
-
     @Inject(method = "addHandlers", at = @At("TAIL"))
     private static void addHandlers(ChannelPipeline pipeline, NetworkSide side, boolean local, @Nullable PacketSizeLogger packetSizeLogger, CallbackInfo ci) {
         System.out.println("Side: "+side);
@@ -54,14 +52,10 @@ public class ClientConnectionMixin {
     protected void hookChannelRead(ChannelHandlerContext channelHandlerContext, Packet<?> packet, CallbackInfo ci) {
         if (this.channel.isOpen() && this.packetListener != null && packetListener.accepts(packet) && side == NetworkSide.CLIENTBOUND) {
             NetworkPhase phase = PacketSniffer.getNetworkPhase(channelHandlerContext);
-            System.out.println(phase + " | Received packet: " + packet.getClass().getSimpleName() + " on side: " + side + " with id: " + packet.getPacketType().id());
+//            System.out.println(phase + " | Received packet: " + packet.getClass().getSimpleName() + " on side: " + side + " with id: " + packet.getPacketType().id());
             if (phase == NetworkPhase.CONFIGURATION) {
                 PacketSniffer.configPackets.add(packet);
             } else if (phase == NetworkPhase.PLAY) {
-                calls++;
-//                if (calls != PacketSniffer.decoderCalls) System.out.println("Mismatch in calls: " + calls + " vs " + PacketSniffer.decoderCalls);
-//                System.out.println("Adding packet to play packets: " + packet.getClass().getSimpleName());
-                PacketSniffer.appendBuffer(packet);
                 PacketSniffer.playPackets.add(packet);
             }
         }

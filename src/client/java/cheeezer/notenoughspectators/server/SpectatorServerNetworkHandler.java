@@ -3,11 +3,11 @@ package cheeezer.notenoughspectators.server;
 import cheeezer.notenoughspectators.PacketSniffer;
 import com.mojang.logging.LogUtils;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.timeout.TimeoutException;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.network.*;
@@ -21,10 +21,11 @@ import net.minecraft.network.packet.c2s.login.EnterConfigurationC2SPacket;
 import net.minecraft.network.packet.c2s.login.LoginHelloC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryPingC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryRequestC2SPacket;
-import net.minecraft.network.packet.s2c.common.DisconnectS2CPacket;
+import net.minecraft.network.packet.s2c.common.KeepAliveS2CPacket;
 import net.minecraft.network.packet.s2c.config.ReadyS2CPacket;
 import net.minecraft.network.packet.s2c.login.LoginDisconnectS2CPacket;
 import net.minecraft.network.packet.s2c.login.LoginSuccessS2CPacket;
+import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
 import net.minecraft.network.packet.s2c.query.PingResultS2CPacket;
 import net.minecraft.network.packet.s2c.query.QueryResponseS2CPacket;
 import net.minecraft.network.state.*;
@@ -34,7 +35,7 @@ import net.minecraft.util.Uuids;
 import org.slf4j.Logger;
 
 import java.nio.channels.ClosedChannelException;
-import java.util.NoSuchElementException;
+import java.util.random.RandomGenerator;
 
 public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<Packet<?>> {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -95,23 +96,46 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                 System.out.println(packet);
                 if (packet instanceof ReadyC2SPacket) {
                     phase = NetworkPhase.PLAY;
-                    System.out.println("MC SERVER: "+ MinecraftClient.getInstance().getServer());
-                    DynamicRegistryManager.Immutable registryManager = MinecraftClient.getInstance().getServer().getRegistryManager();
+                    DynamicRegistryManager.Immutable registryManager = MinecraftClient.getInstance().getNetworkHandler().getRegistryManager();
+                    System.out.println("Registry Manager: " + registryManager);
                     transitionOutbound(PlayStateFactories.S2C.bind(RegistryByteBuf.makeFactory(registryManager)));
 
-                    System.out.printf("%d packets and %d raw packets", PacketSniffer.playPackets.size(), PacketSniffer.getPlayPackets().size());
-
+                    NetworkState<?> state = context.channel().pipeline().get(EncoderHandler.class).state;
                     context.channel().pipeline().remove("encoder");
-                    context.channel().pipeline().remove("prepender");
                     for (ByteBuf byteBuf : PacketSniffer.getPlayPackets()) {
                         context.writeAndFlush(byteBuf.copy());
                     }
-                    System.out.println("Sent play packets");
+
+                    sendPacket(state, new GameStateChangeS2CPacket(new GameStateChangeS2CPacket.Reason(3), 3.0F));
+
+                    new Thread(() -> {
+                        int packetCount = PacketSniffer.playPackets.size();
+                        RandomGenerator rand = RandomGenerator.getDefault();
+                        int tick = 0;
+                        while (context.channel().isOpen() && context.channel().isActive()) {
+                            tick++;
+                            try {
+                                Thread.sleep(50);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                return;
+                            }
+                            if (tick % 400 == 0) {
+                                sendPacket(state, new KeepAliveS2CPacket(rand.nextLong()));
+                            }
+                            if (PacketSniffer.getPlayPackets().size() > packetCount) {
+                                for (ByteBuf byteBuf : PacketSniffer.getPlayPackets().subList(packetCount, PacketSniffer.getPlayPackets().size())) {
+                                    context.writeAndFlush(byteBuf.copy());
+                                }
+                                packetCount = PacketSniffer.getPlayPackets().size();
+                            }
+                        }
+                    }).start();
+                    transitionInbound(PlayStateFactories.C2S.bind(RegistryByteBuf.makeFactory(registryManager), null));
                 }
                 break;
-            case NetworkPhase.PLAY:
-                System.out.println("Play: "+packet);
         }
+        context.fireChannelRead(packet);
     }
 
     private void login(HandshakeC2SPacket packet) {
@@ -128,6 +152,14 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
             this.channel.close().awaitUninterruptibly();
         } else {
             transitionInbound(LoginStates.C2S);
+        }
+    }
+
+    private void sendPacket(NetworkState<?> state, Packet packet) {
+        if (channel.isOpen()) {
+            ByteBuf byteBuf = Unpooled.buffer();
+            state.codec().encode(byteBuf, packet);
+            channel.writeAndFlush(byteBuf);
         }
     }
 
@@ -201,7 +233,6 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 //            }
 //        }
 //    }
-
 
     private static void syncUninterruptibly(ChannelFuture future) {
         try {

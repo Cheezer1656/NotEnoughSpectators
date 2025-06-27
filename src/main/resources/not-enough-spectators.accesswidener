@@ -3,3 +3,6 @@ accessWidener v2 named
 accessible field net/minecraft/network/handler/DecoderHandler state Lnet/minecraft/network/state/NetworkState;
 accessible field net/minecraft/network/ClientConnection channel Lio/netty/channel/Channel;
 accessible field net/minecraft/network/handler/EncoderHandler state Lnet/minecraft/network/state/NetworkState;
+accessible field net/minecraft/network/packet/s2c/play/GameJoinS2CPacket commonPlayerSpawnInfo Lnet/minecraft/network/packet/s2c/play/CommonPlayerSpawnInfo;
+accessible field net/minecraft/network/packet/s2c/play/CommonPlayerSpawnInfo gameMode Lnet/minecraft/world/GameMode;
+mutable field net/minecraft/network/packet/s2c/play/CommonPlayerSpawnInfo gameMode Lnet/minecraft/world/GameMode;
