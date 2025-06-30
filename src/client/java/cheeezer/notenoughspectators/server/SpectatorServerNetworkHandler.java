@@ -26,6 +26,7 @@ import net.minecraft.network.packet.s2c.common.KeepAliveS2CPacket;
 import net.minecraft.network.packet.s2c.config.ReadyS2CPacket;
 import net.minecraft.network.packet.s2c.login.LoginDisconnectS2CPacket;
 import net.minecraft.network.packet.s2c.login.LoginSuccessS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
 import net.minecraft.network.packet.s2c.query.PingResultS2CPacket;
 import net.minecraft.network.packet.s2c.query.QueryResponseS2CPacket;
@@ -33,6 +34,7 @@ import net.minecraft.network.state.*;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.Uuids;
+import net.minecraft.util.math.BlockPos;
 import org.slf4j.Logger;
 
 import java.nio.channels.ClosedChannelException;
@@ -104,8 +106,17 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     NetworkState<?> state = context.channel().pipeline().get(EncoderHandler.class).state;
                     context.channel().pipeline().remove("encoder");
                     for (ByteBuf byteBuf : PacketSniffer.getPlayPackets()) {
+                        if (byteBuf.getByte(0) == 0x2B) {
+                            // Modify the packet to give the spectator an entity ID that is not used by any other player
+                            // TODO - This is a hacky way to do this, find a better way
+                            byteBuf.setByte(1, Integer.MAX_VALUE);
+                        }
                         context.writeAndFlush(byteBuf.copy());
                     }
+
+                    // Spawn the host player
+                    assert MinecraftClient.getInstance().player != null;
+                    sendPacket(state, new EntitySpawnS2CPacket(MinecraftClient.getInstance().player, 0, BlockPos.ofFloored(MinecraftClient.getInstance().player.getPos())));
 
                     sendPacket(state, new GameStateChangeS2CPacket(new GameStateChangeS2CPacket.Reason(3), 3.0F));
 
