@@ -121,17 +121,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                         context.writeAndFlush(byteBuf.copy());
                     }
 
-                    // Spawn the host player
-                    ClientPlayerEntity player = MinecraftClient.getInstance().player;
-                    assert player != null;
-                    sendPacket(new EntitySpawnS2CPacket(player, 0, BlockPos.ofFloored(player.getPos())));
-                    sendPacket(new EntityPositionSyncS2CPacket(player.getId(), PlayerPosition.fromEntity(player), true));
-
-                    // Set spectator attributes
-                    PlayerAbilities playerAbilities = new PlayerAbilities();
-                    playerAbilities.unpack(new PlayerAbilities.Packed(true, true, true, true, true, 0.05F, 0.1F));
-                    sendPacket(new PlayerAbilitiesS2CPacket(playerAbilities));
-                    sendPacket(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.GAME_MODE_CHANGED, 1.0F));
+                    configureClient();
 
                     // TODO - Don't busy wait
                     new Thread(() -> {
@@ -147,6 +137,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                         }
                     }).start();
 
+                    ClientPlayerEntity player = MinecraftClient.getInstance().player;
                     RawPacketCallback.EVENT.register((buf) -> {
                         if (buf.getByte(0) == 0x2B) {
                             // Modify the packet to give the spectator an entity ID that is not used by any other player
@@ -154,8 +145,19 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                             buf.setByte(1, Integer.MAX_VALUE);
                             // Alert the spectator that they are switching servers
                             sendPacket(new ProfilelessChatMessageS2CPacket(Text.of("Switching server..."), MessageType.params(MessageType.SAY_COMMAND, player.getWorld().getRegistryManager(), Text.of("NotEnoughSpectators"))));
+                            context.channel().writeAndFlush(buf);
+                            new Thread(() -> {
+                                try {
+                                    Thread.sleep(100);
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                    return;
+                                }
+                                configureClient();
+                            }).start();
+                        } else {
+                            context.channel().writeAndFlush(buf);
                         }
-                        context.channel().writeAndFlush(buf);
                     });
 
                     MovementCallback.EVENT.register((movementPacket) -> {
@@ -209,6 +211,20 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                 channel.writeAndFlush(byteBuf);
             }
         }
+    }
+
+    private void configureClient() {
+        // Spawn the host player
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+        assert player != null;
+        sendPacket(new EntitySpawnS2CPacket(player, 0, BlockPos.ofFloored(player.getPos())));
+        sendPacket(new EntityPositionSyncS2CPacket(player.getId(), PlayerPosition.fromEntity(player), true));
+
+        // Set spectator attributes
+        PlayerAbilities playerAbilities = new PlayerAbilities();
+        playerAbilities.unpack(new PlayerAbilities.Packed(true, true, true, true, true, 0.05F, 0.1F));
+        sendPacket(new PlayerAbilitiesS2CPacket(playerAbilities));
+        sendPacket(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.GAME_MODE_CHANGED, 1.0F));
     }
 
     public void transitionOutbound(NetworkState<?> newState) {
