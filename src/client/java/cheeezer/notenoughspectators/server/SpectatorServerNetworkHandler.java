@@ -153,7 +153,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                             // TODO - This is a hacky way to do this, find a better way
                             buf.setByte(1, Integer.MAX_VALUE);
                             // Alert the spectator that they are switching servers
-                            sendPacket(new ProfilelessChatMessageS2CPacket(Text.of("[NES]: Switching server..."), MessageType.params(MessageType.CHAT, player)));
+                            sendPacket(new ProfilelessChatMessageS2CPacket(Text.of("Switching server..."), MessageType.params(MessageType.SAY_COMMAND, player.getWorld().getRegistryManager(), Text.of("NotEnoughSpectators"))));
                         }
                         context.channel().writeAndFlush(buf);
                     });
