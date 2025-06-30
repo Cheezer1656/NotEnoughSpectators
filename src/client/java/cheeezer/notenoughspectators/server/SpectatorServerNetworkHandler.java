@@ -1,21 +1,20 @@
 package cheeezer.notenoughspectators.server;
 
+import cheeezer.notenoughspectators.NotEnoughSpectators;
 import cheeezer.notenoughspectators.PacketSniffer;
 import cheeezer.notenoughspectators.event.MovementCallback;
 import cheeezer.notenoughspectators.event.PacketCallback;
-import com.mojang.logging.LogUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.channel.*;
+import io.netty.handler.timeout.TimeoutException;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.entity.player.PlayerPosition;
 import net.minecraft.network.*;
+import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.handler.*;
 import net.minecraft.network.listener.PacketListener;
 import net.minecraft.network.packet.Packet;
@@ -26,6 +25,7 @@ import net.minecraft.network.packet.c2s.login.EnterConfigurationC2SPacket;
 import net.minecraft.network.packet.c2s.login.LoginHelloC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryPingC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryRequestC2SPacket;
+import net.minecraft.network.packet.s2c.common.DisconnectS2CPacket;
 import net.minecraft.network.packet.s2c.common.KeepAliveS2CPacket;
 import net.minecraft.network.packet.s2c.config.ReadyS2CPacket;
 import net.minecraft.network.packet.s2c.login.LoginDisconnectS2CPacket;
@@ -50,6 +50,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
     SpectatorServer server;
     NetworkPhase phase = NetworkPhase.HANDSHAKING;
     private Channel channel;
+    private PacketCodec codec;
     private boolean duringLogin = false;
     private boolean errored = false;
 
@@ -108,7 +109,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     System.out.println("Registry Manager: " + registryManager);
                     transitionOutbound(PlayStateFactories.S2C.bind(RegistryByteBuf.makeFactory(registryManager)));
 
-                    NetworkState<?> state = context.channel().pipeline().get(EncoderHandler.class).state;
+                    codec = context.channel().pipeline().get(EncoderHandler.class).state.codec();
                     context.channel().pipeline().remove("encoder");
                     for (ByteBuf byteBuf : PacketSniffer.getPlayPackets()) {
                         if (byteBuf.getByte(0) == 0x2B) {
@@ -122,14 +123,14 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     // Spawn the host player
                     ClientPlayerEntity player = MinecraftClient.getInstance().player;
                     assert player != null;
-                    sendPacket(state, new EntitySpawnS2CPacket(player, 0, BlockPos.ofFloored(player.getPos())));
-                    sendPacket(state, new EntityPositionSyncS2CPacket(player.getId(), PlayerPosition.fromEntity(player), true));
+                    sendPacket(new EntitySpawnS2CPacket(player, 0, BlockPos.ofFloored(player.getPos())));
+                    sendPacket(new EntityPositionSyncS2CPacket(player.getId(), PlayerPosition.fromEntity(player), true));
 
                     // Set spectator attributes
                     PlayerAbilities playerAbilities = new PlayerAbilities();
                     playerAbilities.unpack(new PlayerAbilities.Packed(true, true, true, true, true, 0.05F, 0.1F));
-                    sendPacket(state, new PlayerAbilitiesS2CPacket(playerAbilities));
-                    sendPacket(state, new GameStateChangeS2CPacket(GameStateChangeS2CPacket.GAME_MODE_CHANGED, 1.0F));
+                    sendPacket(new PlayerAbilitiesS2CPacket(playerAbilities));
+                    sendPacket(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.GAME_MODE_CHANGED, 1.0F));
 
                     // TODO - Don't busy wait
                     new Thread(() -> {
@@ -141,7 +142,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                                 Thread.currentThread().interrupt();
                                 return;
                             }
-                            sendPacket(state, new KeepAliveS2CPacket(rand.nextLong()));
+                            sendPacket(new KeepAliveS2CPacket(rand.nextLong()));
                         }
                     }).start();
 
@@ -153,15 +154,15 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                         switch (movementPacket) {
                             case MovementCallback.MovementType.POSITION_AND_ROTATION -> {
                                 Vec3d delta = player.getPos().subtract(player.lastX, player.lastY, player.lastZ).multiply(4096.0);
-                                sendPacket(state, new EntityS2CPacket.RotateAndMoveRelative(player.getId(), (short) delta.x, (short) delta.y, (short) delta.z, MathHelper.packDegrees(player.getYaw()), MathHelper.packDegrees(player.getPitch()), player.isOnGround()));
+                                sendPacket(new EntityS2CPacket.RotateAndMoveRelative(player.getId(), (short) delta.x, (short) delta.y, (short) delta.z, MathHelper.packDegrees(player.getYaw()), MathHelper.packDegrees(player.getPitch()), player.isOnGround()));
                             }
                             case MovementCallback.MovementType.POSITION -> {
                                 Vec3d delta = player.getPos().subtract(player.lastX, player.lastY, player.lastZ).multiply(4096.0);
-                                sendPacket(state, new EntityS2CPacket.MoveRelative(player.getId(), (short) delta.x, (short) delta.y, (short) delta.z, player.isOnGround()));
+                                sendPacket(new EntityS2CPacket.MoveRelative(player.getId(), (short) delta.x, (short) delta.y, (short) delta.z, player.isOnGround()));
                             }
                             case MovementCallback.MovementType.ROTATION -> {
-                                sendPacket(state, new EntityS2CPacket.Rotate(player.getId(), MathHelper.packDegrees(player.getYaw()), MathHelper.packDegrees(player.getPitch()), player.isOnGround()));
-                                sendPacket(state, new EntitySetHeadYawS2CPacket(player, MathHelper.packDegrees(player.headYaw)));
+                                sendPacket(new EntityS2CPacket.Rotate(player.getId(), MathHelper.packDegrees(player.getYaw()), MathHelper.packDegrees(player.getPitch()), player.isOnGround()));
+                                sendPacket(new EntitySetHeadYawS2CPacket(player, MathHelper.packDegrees(player.headYaw)));
                             }
                         }
                     });
@@ -190,11 +191,15 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
         }
     }
 
-    private void sendPacket(NetworkState<?> state, Packet packet) {
+    private void sendPacket(Packet<?> packet) {
         if (channel.isOpen()) {
-            ByteBuf byteBuf = Unpooled.buffer();
-            state.codec().encode(byteBuf, packet);
-            channel.writeAndFlush(byteBuf);
+            if (codec == null) {
+                channel.writeAndFlush(packet);
+            } else {
+                ByteBuf byteBuf = Unpooled.buffer();
+                codec.encode(byteBuf, packet);
+                channel.writeAndFlush(byteBuf);
+            }
         }
     }
 
@@ -229,45 +234,47 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
         }
     }
 
-//    @Override
-//    public void exceptionCaught(ChannelHandlerContext context, Throwable ex) {
-//        if (ex instanceof PacketException) {
-//            LOGGER.debug("Skipping buf due to errors", ex.getCause());
-//        } else {
-//            boolean bl = !this.errored;
-//            this.errored = true;
-//            if (this.channel.isOpen()) {
-//                if (ex instanceof TimeoutException) {
-//                    LOGGER.debug("Timeout", ex);
-//                    this.disconnect(Text.translatable("disconnect.timeout"));
-//                } else {
-//                    Text text = Text.translatable("disconnect.genericReason", "Internal Exception: " + ex);
-//                    PacketListener packetListener = this.packetListener;
-//                    DisconnectionInfo disconnectionInfo;
-//                    if (packetListener != null) {
-//                        disconnectionInfo = packetListener.createDisconnectionInfo(text, ex);
-//                    } else {
-//                        disconnectionInfo = new DisconnectionInfo(text);
-//                    }
-//
-//                    if (bl) {
-//                        LOGGER.debug("Failed to sent buf", ex);
-//                        if (this.getOppositeSide() == NetworkSide.CLIENTBOUND) {
-//                            Packet<?> buf = (Packet<?>)(this.duringLogin ? new LoginDisconnectS2CPacket(text) : new DisconnectS2CPacket(text));
-//                            this.send(buf, PacketCallbacks.always(() -> this.disconnect(disconnectionInfo)));
-//                        } else {
-//                            this.disconnect(disconnectionInfo);
-//                        }
-//
-//                        this.tryDisableAutoRead();
-//                    } else {
-//                        LOGGER.debug("Double fault", ex);
-//                        this.disconnect(disconnectionInfo);
-//                    }
-//                }
-//            }
-//        }
-//    }
+    @Override
+    public void exceptionCaught(ChannelHandlerContext context, Throwable ex) {
+        if (ex instanceof PacketException) {
+            LOGGER.debug("Skipping buf due to errors", ex.getCause());
+        } else {
+            boolean bl = !this.errored;
+            this.errored = true;
+            if (this.channel.isOpen()) {
+                if (ex instanceof TimeoutException) {
+                    LOGGER.debug("Timeout", ex);
+                    this.disconnect(new DisconnectionInfo(Text.translatable("disconnect.timeout")));
+                } else {
+                    Text text = Text.translatable("disconnect.genericReason", "Internal Exception: " + ex);
+                    DisconnectionInfo disconnectionInfo = new DisconnectionInfo(text);
+
+                    if (bl) {
+                        LOGGER.debug("Failed to sent buf", ex);
+                        Packet<?> buf = this.duringLogin ? new LoginDisconnectS2CPacket(text) : new DisconnectS2CPacket(text);
+                        sendPacket(buf);
+                        this.disconnect(disconnectionInfo);
+
+                        if (this.channel != null) {
+                            this.channel.config().setAutoRead(false);
+                        }
+                    } else {
+                        LOGGER.debug("Double fault", ex);
+                        this.disconnect(disconnectionInfo);
+                    }
+                }
+            }
+        }
+    }
+
+    private void disconnect(DisconnectionInfo disconnectionInfo) {
+        LOGGER.debug("Disconnecting due to: {}", disconnectionInfo.reason());
+        if (this.channel.isOpen()) {
+            this.channel.close().awaitUninterruptibly();
+        } else {
+            LOGGER.debug("Channel already closed, not sending disconnect packet");
+        }
+    }
 
     private static void syncUninterruptibly(ChannelFuture future) {
         try {

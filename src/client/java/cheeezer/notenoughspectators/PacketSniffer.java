@@ -43,12 +43,13 @@ public class PacketSniffer extends ChannelInboundHandlerAdapter {
             try {
                 packet = (Packet<?>) context.pipeline().get(DecoderHandler.class).state.codec().decode(byteBuf.copy());
             } catch (Exception e) {
+                NotEnoughSpectators.LOGGER.debug("Error decoding packet: " + e.getMessage());
                 e.printStackTrace();
                 if (e instanceof PacketException) {
                     byteBuf.skipBytes(byteBuf.readableBytes());
                 }
 
-                throw e;
+                return;
             }
             NetworkPhase phase = getNetworkPhase(context);
             if (phase == NetworkPhase.PLAY && packet.getPacketType().side() == NetworkSide.CLIENTBOUND) {
