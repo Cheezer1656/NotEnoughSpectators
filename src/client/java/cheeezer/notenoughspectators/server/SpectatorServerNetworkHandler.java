@@ -13,6 +13,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.entity.player.PlayerPosition;
 import net.minecraft.network.*;
 import net.minecraft.network.handler.*;
@@ -23,7 +24,6 @@ import net.minecraft.network.packet.c2s.handshake.ConnectionIntent;
 import net.minecraft.network.packet.c2s.handshake.HandshakeC2SPacket;
 import net.minecraft.network.packet.c2s.login.EnterConfigurationC2SPacket;
 import net.minecraft.network.packet.c2s.login.LoginHelloC2SPacket;
-import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryPingC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryRequestC2SPacket;
 import net.minecraft.network.packet.s2c.common.KeepAliveS2CPacket;
@@ -125,7 +125,11 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     sendPacket(state, new EntitySpawnS2CPacket(player, 0, BlockPos.ofFloored(player.getPos())));
                     sendPacket(state, new EntityPositionSyncS2CPacket(player.getId(), PlayerPosition.fromEntity(player), true));
 
-                    sendPacket(state, new GameStateChangeS2CPacket(new GameStateChangeS2CPacket.Reason(3), 3.0F));
+                    // Set spectator attributes
+                    PlayerAbilities playerAbilities = new PlayerAbilities();
+                    playerAbilities.unpack(new PlayerAbilities.Packed(true, true, true, true, true, 0.05F, 0.1F));
+                    sendPacket(state, new PlayerAbilitiesS2CPacket(playerAbilities));
+                    sendPacket(state, new GameStateChangeS2CPacket(GameStateChangeS2CPacket.GAME_MODE_CHANGED, 1.0F));
 
                     // TODO - Don't busy wait
                     new Thread(() -> {
