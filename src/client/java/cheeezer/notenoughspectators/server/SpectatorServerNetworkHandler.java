@@ -85,7 +85,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                 } else if (packet instanceof EnterConfigurationC2SPacket) {
                     phase = NetworkPhase.CONFIGURATION;
                     transitionOutbound(ConfigurationStates.S2C);
-                    for (Packet packet1 : PacketSniffer.configPackets) {
+                    for (Packet packet1 : PacketSniffer.getConfigPackets()) {
                         context.write(packet1);
                     }
                     context.flush();
@@ -109,6 +109,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
                     sendPacket(state, new GameStateChangeS2CPacket(new GameStateChangeS2CPacket.Reason(3), 3.0F));
 
+                    // TODO - Don't busy wait
                     new Thread(() -> {
                         RandomGenerator rand = RandomGenerator.getDefault();
                         while (context.channel().isOpen() && context.channel().isActive()) {
@@ -232,11 +233,11 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
     private static void syncUninterruptibly(ChannelFuture future) {
         try {
             future.syncUninterruptibly();
-        } catch (Exception var2) {
-            if (var2 instanceof ClosedChannelException) {
+        } catch (Exception e) {
+            if (e instanceof ClosedChannelException) {
                 LOGGER.info("Connection closed during protocol change");
             } else {
-                throw var2;
+                throw e;
             }
         }
     }

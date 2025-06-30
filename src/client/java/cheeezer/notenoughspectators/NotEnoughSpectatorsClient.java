@@ -9,6 +9,10 @@ import net.minecraft.text.Text;
 public class NotEnoughSpectatorsClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
+		// Start the spectator server ASAP for testing purposes
+		startServer();
+
+		// Actual start server command (to be used in the future)
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(ClientCommandManager.literal("share")
 				.executes(context -> {
 					context.getSource().sendFeedback(Text.literal("Starting server..."));
