@@ -1,6 +1,7 @@
 package cheeezer.notenoughspectators.server;
 
 import cheeezer.notenoughspectators.PacketSniffer;
+import cheeezer.notenoughspectators.event.PacketCallback;
 import com.mojang.logging.LogUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -109,28 +110,22 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     sendPacket(state, new GameStateChangeS2CPacket(new GameStateChangeS2CPacket.Reason(3), 3.0F));
 
                     new Thread(() -> {
-                        int packetCount = PacketSniffer.playPackets.size();
                         RandomGenerator rand = RandomGenerator.getDefault();
-                        int tick = 0;
                         while (context.channel().isOpen() && context.channel().isActive()) {
-                            tick++;
                             try {
-                                Thread.sleep(50);
+                                Thread.sleep(20000);
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
                                 return;
                             }
-                            if (tick % 400 == 0) {
-                                sendPacket(state, new KeepAliveS2CPacket(rand.nextLong()));
-                            }
-                            if (PacketSniffer.getPlayPackets().size() > packetCount) {
-                                for (ByteBuf byteBuf : PacketSniffer.getPlayPackets().subList(packetCount, PacketSniffer.getPlayPackets().size())) {
-                                    context.writeAndFlush(byteBuf.copy());
-                                }
-                                packetCount = PacketSniffer.getPlayPackets().size();
-                            }
+                            sendPacket(state, new KeepAliveS2CPacket(rand.nextLong()));
                         }
                     }).start();
+
+                    PacketCallback.EVENT.register((buf) -> {
+                        context.channel().writeAndFlush(buf);
+                    });
+
                     transitionInbound(PlayStateFactories.C2S.bind(RegistryByteBuf.makeFactory(registryManager), null));
                 }
                 break;
@@ -197,7 +192,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 //    @Override
 //    public void exceptionCaught(ChannelHandlerContext context, Throwable ex) {
 //        if (ex instanceof PacketException) {
-//            LOGGER.debug("Skipping packet due to errors", ex.getCause());
+//            LOGGER.debug("Skipping buf due to errors", ex.getCause());
 //        } else {
 //            boolean bl = !this.errored;
 //            this.errored = true;
@@ -216,10 +211,10 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 //                    }
 //
 //                    if (bl) {
-//                        LOGGER.debug("Failed to sent packet", ex);
+//                        LOGGER.debug("Failed to sent buf", ex);
 //                        if (this.getOppositeSide() == NetworkSide.CLIENTBOUND) {
-//                            Packet<?> packet = (Packet<?>)(this.duringLogin ? new LoginDisconnectS2CPacket(text) : new DisconnectS2CPacket(text));
-//                            this.send(packet, PacketCallbacks.always(() -> this.disconnect(disconnectionInfo)));
+//                            Packet<?> buf = (Packet<?>)(this.duringLogin ? new LoginDisconnectS2CPacket(text) : new DisconnectS2CPacket(text));
+//                            this.send(buf, PacketCallbacks.always(() -> this.disconnect(disconnectionInfo)));
 //                        } else {
 //                            this.disconnect(disconnectionInfo);
 //                        }

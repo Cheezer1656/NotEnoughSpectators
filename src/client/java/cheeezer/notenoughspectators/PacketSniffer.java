@@ -1,5 +1,6 @@
 package cheeezer.notenoughspectators;
 
+import cheeezer.notenoughspectators.event.PacketCallback;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
@@ -65,6 +66,7 @@ public class PacketSniffer extends ChannelInboundHandlerAdapter {
                     packetCount++;
                 }
                 PLAY_PACKETS.add(byteBuf.copy());
+                PacketCallback.EVENT.invoker().onPacketReceived(byteBuf.copy());
             }
         }
 
