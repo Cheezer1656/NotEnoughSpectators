@@ -1,7 +1,9 @@
 package cheeezer.notenoughspectators.mixin.client;
 
 import cheeezer.notenoughspectators.PacketSniffer;
+import cheeezer.notenoughspectators.event.MovementCallback;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import net.minecraft.network.ClientConnection;
@@ -10,6 +12,7 @@ import net.minecraft.network.NetworkSide;
 import net.minecraft.network.handler.*;
 import net.minecraft.network.listener.PacketListener;
 import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -46,6 +49,19 @@ public class ClientConnectionMixin {
             if (phase == NetworkPhase.CONFIGURATION) {
                 PacketSniffer.addConfigPacket(packet);
             }
+        }
+    }
+
+    @Inject(method = "send(Lnet/minecraft/network/packet/Packet;Lio/netty/channel/ChannelFutureListener;Z)V", at = @At("HEAD"))
+    public void send(Packet<?> packet, @Nullable ChannelFutureListener channelFutureListener, boolean flush, CallbackInfo ci) {
+        if (packet instanceof PlayerMoveC2SPacket) {
+            MovementCallback.MovementType movementType = switch (packet) {
+                case PlayerMoveC2SPacket.PositionAndOnGround ignored -> MovementCallback.MovementType.POSITION;
+                case PlayerMoveC2SPacket.LookAndOnGround ignored -> MovementCallback.MovementType.ROTATION;
+                case PlayerMoveC2SPacket.Full ignored -> MovementCallback.MovementType.POSITION_AND_ROTATION;
+                default -> MovementCallback.MovementType.UNKNOWN;
+            };
+            MovementCallback.EVENT.invoker().onMovementPacket(movementType);
         }
     }
 

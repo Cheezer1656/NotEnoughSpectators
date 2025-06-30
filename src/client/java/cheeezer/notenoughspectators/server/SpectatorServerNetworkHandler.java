@@ -1,6 +1,7 @@
 package cheeezer.notenoughspectators.server;
 
 import cheeezer.notenoughspectators.PacketSniffer;
+import cheeezer.notenoughspectators.event.MovementCallback;
 import cheeezer.notenoughspectators.event.PacketCallback;
 import com.mojang.logging.LogUtils;
 import io.netty.buffer.ByteBuf;
@@ -11,6 +12,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.player.PlayerPosition;
 import net.minecraft.network.*;
 import net.minecraft.network.handler.*;
 import net.minecraft.network.listener.PacketListener;
@@ -20,14 +23,14 @@ import net.minecraft.network.packet.c2s.handshake.ConnectionIntent;
 import net.minecraft.network.packet.c2s.handshake.HandshakeC2SPacket;
 import net.minecraft.network.packet.c2s.login.EnterConfigurationC2SPacket;
 import net.minecraft.network.packet.c2s.login.LoginHelloC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryPingC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryRequestC2SPacket;
 import net.minecraft.network.packet.s2c.common.KeepAliveS2CPacket;
 import net.minecraft.network.packet.s2c.config.ReadyS2CPacket;
 import net.minecraft.network.packet.s2c.login.LoginDisconnectS2CPacket;
 import net.minecraft.network.packet.s2c.login.LoginSuccessS2CPacket;
-import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
-import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
+import net.minecraft.network.packet.s2c.play.*;
 import net.minecraft.network.packet.s2c.query.PingResultS2CPacket;
 import net.minecraft.network.packet.s2c.query.QueryResponseS2CPacket;
 import net.minecraft.network.state.*;
@@ -35,6 +38,8 @@ import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.Uuids;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 import org.slf4j.Logger;
 
 import java.nio.channels.ClosedChannelException;
@@ -115,8 +120,10 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     }
 
                     // Spawn the host player
-                    assert MinecraftClient.getInstance().player != null;
-                    sendPacket(state, new EntitySpawnS2CPacket(MinecraftClient.getInstance().player, 0, BlockPos.ofFloored(MinecraftClient.getInstance().player.getPos())));
+                    ClientPlayerEntity player = MinecraftClient.getInstance().player;
+                    assert player != null;
+                    sendPacket(state, new EntitySpawnS2CPacket(player, 0, BlockPos.ofFloored(player.getPos())));
+                    sendPacket(state, new EntityPositionSyncS2CPacket(player.getId(), PlayerPosition.fromEntity(player), true));
 
                     sendPacket(state, new GameStateChangeS2CPacket(new GameStateChangeS2CPacket.Reason(3), 3.0F));
 
@@ -136,6 +143,23 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
                     PacketCallback.EVENT.register((buf) -> {
                         context.channel().writeAndFlush(buf);
+                    });
+
+                    MovementCallback.EVENT.register((movementPacket) -> {
+                        switch (movementPacket) {
+                            case MovementCallback.MovementType.POSITION_AND_ROTATION -> {
+                                Vec3d delta = player.getPos().subtract(player.lastX, player.lastY, player.lastZ).multiply(4096.0);
+                                sendPacket(state, new EntityS2CPacket.RotateAndMoveRelative(player.getId(), (short) delta.x, (short) delta.y, (short) delta.z, MathHelper.packDegrees(player.getYaw()), MathHelper.packDegrees(player.getPitch()), player.isOnGround()));
+                            }
+                            case MovementCallback.MovementType.POSITION -> {
+                                Vec3d delta = player.getPos().subtract(player.lastX, player.lastY, player.lastZ).multiply(4096.0);
+                                sendPacket(state, new EntityS2CPacket.MoveRelative(player.getId(), (short) delta.x, (short) delta.y, (short) delta.z, player.isOnGround()));
+                            }
+                            case MovementCallback.MovementType.ROTATION -> {
+                                sendPacket(state, new EntityS2CPacket.Rotate(player.getId(), MathHelper.packDegrees(player.getYaw()), MathHelper.packDegrees(player.getPitch()), player.isOnGround()));
+                                sendPacket(state, new EntitySetHeadYawS2CPacket(player, MathHelper.packDegrees(player.headYaw)));
+                            }
+                        }
                     });
 
                     transitionInbound(PlayStateFactories.C2S.bind(RegistryByteBuf.makeFactory(registryManager), null));
