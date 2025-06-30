@@ -3,7 +3,7 @@ package cheeezer.notenoughspectators.server;
 import cheeezer.notenoughspectators.NotEnoughSpectators;
 import cheeezer.notenoughspectators.PacketSniffer;
 import cheeezer.notenoughspectators.event.MovementCallback;
-import cheeezer.notenoughspectators.event.PacketCallback;
+import cheeezer.notenoughspectators.event.RawPacketCallback;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
@@ -17,6 +17,7 @@ import net.minecraft.network.*;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.handler.*;
 import net.minecraft.network.listener.PacketListener;
+import net.minecraft.network.message.MessageType;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.c2s.config.ReadyC2SPacket;
 import net.minecraft.network.packet.c2s.handshake.ConnectionIntent;
@@ -146,7 +147,14 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                         }
                     }).start();
 
-                    PacketCallback.EVENT.register((buf) -> {
+                    RawPacketCallback.EVENT.register((buf) -> {
+                        if (buf.getByte(0) == 0x2B) {
+                            // Modify the packet to give the spectator an entity ID that is not used by any other player
+                            // TODO - This is a hacky way to do this, find a better way
+                            buf.setByte(1, Integer.MAX_VALUE);
+                            // Alert the spectator that they are switching servers
+                            sendPacket(new ProfilelessChatMessageS2CPacket(Text.of("[NES]: Switching server..."), MessageType.params(MessageType.CHAT, player)));
+                        }
                         context.channel().writeAndFlush(buf);
                     });
 

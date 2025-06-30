@@ -1,15 +1,16 @@
 package cheeezer.notenoughspectators.event;
 
-import io.netty.buffer.ByteBuf;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
+import net.minecraft.network.packet.Packet;
 
 public interface PacketCallback {
-    Event<PacketCallback> EVENT = EventFactory.createArrayBacked(PacketCallback.class, listeners -> (buf) -> {
+    Event<PacketCallback> EVENT = EventFactory.createArrayBacked(PacketCallback.class, listeners -> (packet) -> {
         for (PacketCallback listener : listeners) {
-            listener.onPacketReceived(buf);
+            listener.onPacketReceived(packet);
         }
     });
 
-    void onPacketReceived(ByteBuf buf);
+    void onPacketReceived(Packet<?> packet);
 }
+
