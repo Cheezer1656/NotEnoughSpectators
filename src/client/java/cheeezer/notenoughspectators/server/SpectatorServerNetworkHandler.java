@@ -46,7 +46,7 @@ import java.nio.channels.ClosedChannelException;
 import java.util.random.RandomGenerator;
 
 public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<Packet<?>> {
-    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final Logger LOGGER = NotEnoughSpectators.LOGGER;
     SpectatorServer server;
     NetworkPhase phase = NetworkPhase.HANDSHAKING;
     private Channel channel;
