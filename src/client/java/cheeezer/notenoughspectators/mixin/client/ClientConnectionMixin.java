@@ -2,17 +2,24 @@ package cheeezer.notenoughspectators.mixin.client;
 
 import cheeezer.notenoughspectators.PacketSniffer;
 import cheeezer.notenoughspectators.event.MovementCallback;
+import cheeezer.notenoughspectators.event.PacketCallback;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.NetworkPhase;
 import net.minecraft.network.NetworkSide;
 import net.minecraft.network.handler.*;
 import net.minecraft.network.listener.PacketListener;
 import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
+import net.minecraft.util.Hand;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -62,6 +69,10 @@ public class ClientConnectionMixin {
                 default -> MovementCallback.MovementType.UNKNOWN;
             };
             MovementCallback.EVENT.invoker().onMovementPacket(movementType);
+        } else if (packet instanceof HandSwingC2SPacket handSwingPacket) {
+            PacketCallback.EVENT.invoker().onPacketReceived(new EntityAnimationS2CPacket(MinecraftClient.getInstance().player, handSwingPacket.getHand() == Hand.MAIN_HAND ? 0 : 3));
+        } else if (packet instanceof PlayerInteractItemC2SPacket useItemPacket) {
+            PacketCallback.EVENT.invoker().onPacketReceived(new EntityAnimationS2CPacket(MinecraftClient.getInstance().player, useItemPacket.getHand() == Hand.MAIN_HAND ? 0 : 3));
         }
     }
 

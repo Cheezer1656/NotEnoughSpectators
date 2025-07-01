@@ -3,6 +3,7 @@ package cheeezer.notenoughspectators.server;
 import cheeezer.notenoughspectators.NotEnoughSpectators;
 import cheeezer.notenoughspectators.PacketSniffer;
 import cheeezer.notenoughspectators.event.MovementCallback;
+import cheeezer.notenoughspectators.event.PacketCallback;
 import cheeezer.notenoughspectators.event.RawPacketCallback;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -152,6 +153,9 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                             }).start();
                         }
                         context.channel().writeAndFlush(buf);
+                    });
+                    PacketCallback.EVENT.register((packet1) -> {
+                        sendPacket(packet1);
                     });
 
                     MovementCallback.EVENT.register((movementPacket) -> {
