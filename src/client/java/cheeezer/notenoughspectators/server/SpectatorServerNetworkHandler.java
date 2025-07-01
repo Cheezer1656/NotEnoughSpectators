@@ -9,6 +9,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.timeout.TimeoutException;
+import io.netty.util.ReferenceCountUtil;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -116,7 +117,8 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
                     codec = context.channel().pipeline().get(EncoderHandler.class).state.codec();
                     context.channel().pipeline().remove("encoder");
-                    for (ByteBuf byteBuf : PacketSniffer.getPlayPackets()) {
+                    for (ByteBuf byteBuf1 : PacketSniffer.getPlayPackets()) {
+                        ByteBuf byteBuf = ReferenceCountUtil.retain(byteBuf1.copy());
                         if (byteBuf.getByte(0) == 0x2B) {
                             // Modify the packet to give the spectator an entity ID that is not used by any other player
                             // TODO - This is a hacky way to do this, find a better way
@@ -142,7 +144,8 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     }).start();
 
                     ClientPlayerEntity oldPlayer = MinecraftClient.getInstance().player; // Retains previous player instance during transition
-                    RawPacketCallback.EVENT.register((buf) -> {
+                    RawPacketCallback.EVENT.register((buf1) -> {
+                        ByteBuf buf = ReferenceCountUtil.retain(buf1.copy());
                         if (buf.getByte(0) == 0x2B) {
                             // Modify the packet to give the spectator an entity ID that is not used by any other player
                             // TODO - This is a hacky way to do this, find a better way
