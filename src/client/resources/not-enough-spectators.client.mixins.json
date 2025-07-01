@@ -3,7 +3,8 @@
   "package": "cheeezer.notenoughspectators.mixin.client",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "ClientConnectionMixin"
+    "ClientConnectionMixin",
+    "ClientPlayNetworkHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

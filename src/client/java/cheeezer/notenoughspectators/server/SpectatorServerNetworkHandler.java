@@ -2,9 +2,11 @@ package cheeezer.notenoughspectators.server;
 
 import cheeezer.notenoughspectators.NotEnoughSpectators;
 import cheeezer.notenoughspectators.PacketSniffer;
+import cheeezer.notenoughspectators.PlayerTaskQueue;
 import cheeezer.notenoughspectators.event.MovementCallback;
 import cheeezer.notenoughspectators.event.PacketCallback;
 import cheeezer.notenoughspectators.event.RawPacketCallback;
+import com.mojang.datafixers.util.Pair;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
@@ -57,6 +59,7 @@ import org.slf4j.Logger;
 
 import java.nio.channels.ClosedChannelException;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.random.RandomGenerator;
 
@@ -169,15 +172,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                             }
                             sendPacket(new PlayerRespawnS2CPacket(new CommonPlayerSpawnInfo(world.getDimensionEntry(), world.getRegistryKey(), 0, GameMode.CREATIVE, null, world.isDebugWorld(), false, Optional.empty(), 0, 0), (byte) 0));
 
-                            new Thread(() -> {
-                                try {
-                                    Thread.sleep(100);
-                                } catch (InterruptedException e) {
-                                    Thread.currentThread().interrupt();
-                                    return;
-                                }
-                                configureClient();
-                            }).start();
+                            PlayerTaskQueue.addTask((ignored) -> configureClient());
                         }
                         context.channel().writeAndFlush(buf);
                     });
@@ -261,9 +256,10 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
     private void configureClient() {
         // Spawn the host player
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
-        assert player != null;
         sendPacket(new EntitySpawnS2CPacket(player, 0, BlockPos.ofFloored(player.getPos())));
         sendPacket(new EntityPositionSyncS2CPacket(player.getId(), PlayerPosition.fromEntity(player), true));
+        ItemStack handStack = player.getMainHandStack();
+        sendPacket(new EntityEquipmentUpdateS2CPacket(player.getId(), List.of(Pair.of(EquipmentSlot.MAINHAND, handStack))));
 
         // Set spectator attributes
         PlayerAbilities playerAbilities = new PlayerAbilities();
