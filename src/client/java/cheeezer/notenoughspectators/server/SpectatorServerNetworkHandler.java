@@ -48,6 +48,7 @@ import net.minecraft.world.World;
 import org.slf4j.Logger;
 
 import java.nio.channels.ClosedChannelException;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.random.RandomGenerator;
 
@@ -174,15 +175,20 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     });
                     PacketCallback.EVENT.register(this::sendPacket);
 
-                    MovementCallback.EVENT.register((movementPacket) -> {
+                    MovementCallback.EVENT.register((movementType) -> {
                         ClientPlayerEntity player = MinecraftClient.getInstance().player;
                         if (player == null) {
                             return;
                         }
-                        switch (movementPacket) {
+                        switch (movementType) {
                             case MovementCallback.MovementType.POSITION_AND_ROTATION -> {
-                                Vec3d delta = player.getPos().subtract(player.lastX, player.lastY, player.lastZ).multiply(4096.0);
-                                sendPacket(new EntityS2CPacket.RotateAndMoveRelative(player.getId(), (short) delta.x, (short) delta.y, (short) delta.z, MathHelper.packDegrees(player.getYaw()), MathHelper.packDegrees(player.getPitch()), player.isOnGround()));
+                                Vec3d delta = player.getPos().subtract(player.lastX, player.lastY, player.lastZ);
+                                if (delta.lengthSquared() != 0.0) {
+                                    delta = delta.multiply(4096.0);
+                                    sendPacket(new EntityS2CPacket.RotateAndMoveRelative(player.getId(), (short) delta.x, (short) delta.y, (short) delta.z, MathHelper.packDegrees(player.getYaw()), MathHelper.packDegrees(player.getPitch()), player.isOnGround()));
+                                } else {
+                                    sendPacket(new EntityPositionSyncS2CPacket(player.getId(), PlayerPosition.fromEntity(player), player.isOnGround()));
+                                }
                             }
                             case MovementCallback.MovementType.POSITION -> {
                                 Vec3d delta = player.getPos().subtract(player.lastX, player.lastY, player.lastZ).multiply(4096.0);
@@ -243,6 +249,9 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
         playerAbilities.unpack(new PlayerAbilities.Packed(true, true, true, true, true, 0.05F, 0.1F));
         sendPacket(new PlayerAbilitiesS2CPacket(playerAbilities));
         sendPacket(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.GAME_MODE_CHANGED, 1.0F));
+
+        // Teleport the spectator to the host player
+        sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, PlayerPosition.fromEntity(player), Collections.emptySet()));
     }
 
     public void transitionOutbound(NetworkState<?> newState) {
