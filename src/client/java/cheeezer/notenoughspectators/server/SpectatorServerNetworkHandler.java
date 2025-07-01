@@ -26,6 +26,7 @@ import net.minecraft.network.packet.c2s.handshake.ConnectionIntent;
 import net.minecraft.network.packet.c2s.handshake.HandshakeC2SPacket;
 import net.minecraft.network.packet.c2s.login.EnterConfigurationC2SPacket;
 import net.minecraft.network.packet.c2s.login.LoginHelloC2SPacket;
+import net.minecraft.network.packet.c2s.play.ChatMessageC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryPingC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryRequestC2SPacket;
 import net.minecraft.network.packet.s2c.common.DisconnectS2CPacket;
@@ -204,6 +205,11 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     transitionInbound(PlayStateFactories.C2S.bind(RegistryByteBuf.makeFactory(registryManager), null));
                 }
                 break;
+            case NetworkPhase.PLAY:
+                if (packet instanceof ChatMessageC2SPacket chatMessagePacket && chatMessagePacket.chatMessage().equals("tp")) {
+                    // Teleport the spectator to the host player
+                    sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, PlayerPosition.fromEntity(MinecraftClient.getInstance().player), Collections.emptySet()));
+                }
         }
         context.fireChannelRead(packet);
     }
