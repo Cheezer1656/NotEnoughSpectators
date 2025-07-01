@@ -13,8 +13,13 @@ import io.netty.util.ReferenceCountUtil;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.component.ComponentChanges;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerAbilities;
 import net.minecraft.entity.player.PlayerPosition;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.network.*;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.handler.*;
@@ -27,6 +32,7 @@ import net.minecraft.network.packet.c2s.handshake.HandshakeC2SPacket;
 import net.minecraft.network.packet.c2s.login.EnterConfigurationC2SPacket;
 import net.minecraft.network.packet.c2s.login.LoginHelloC2SPacket;
 import net.minecraft.network.packet.c2s.play.ChatMessageC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractItemC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryPingC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryRequestC2SPacket;
 import net.minecraft.network.packet.s2c.common.DisconnectS2CPacket;
@@ -39,6 +45,7 @@ import net.minecraft.network.packet.s2c.query.PingResultS2CPacket;
 import net.minecraft.network.packet.s2c.query.QueryResponseS2CPacket;
 import net.minecraft.network.state.*;
 import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.text.Text;
 import net.minecraft.util.Uuids;
 import net.minecraft.util.math.BlockPos;
@@ -202,11 +209,19 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                         }
                     });
 
-                    transitionInbound(PlayStateFactories.C2S.bind(RegistryByteBuf.makeFactory(registryManager), null));
+                    transitionInbound(PlayStateFactories.C2S.bind(RegistryByteBuf.makeFactory(registryManager), new PlayStateFactories.PacketCodecModifierContext() {
+                        @Override
+                        public boolean isInCreativeMode() {
+                            return true;
+                        }
+                    }));
                 }
                 break;
             case NetworkPhase.PLAY:
                 if (packet instanceof ChatMessageC2SPacket chatMessagePacket && chatMessagePacket.chatMessage().equals("tp")) {
+                    // Teleport the spectator to the host player
+                    sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, PlayerPosition.fromEntity(MinecraftClient.getInstance().player), Collections.emptySet()));
+                } else if (packet instanceof PlayerInteractItemC2SPacket) {
                     // Teleport the spectator to the host player
                     sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, PlayerPosition.fromEntity(MinecraftClient.getInstance().player), Collections.emptySet()));
                 }
@@ -258,6 +273,9 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
         // Teleport the spectator to the host player
         sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, PlayerPosition.fromEntity(player), Collections.emptySet()));
+
+        // Give the spectator a compass
+        sendPacket(new SetPlayerInventoryS2CPacket(EquipmentSlot.MAINHAND.getIndex(), new ItemStack(RegistryEntry.of(Items.COMPASS), 1, ComponentChanges.builder().add(DataComponentTypes.ITEM_NAME, Text.of("Teleport to Host")).build())));
     }
 
     public void transitionOutbound(NetworkState<?> newState) {

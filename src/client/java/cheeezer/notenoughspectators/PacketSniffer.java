@@ -10,9 +10,7 @@ import net.minecraft.network.OpaqueByteBufHolder;
 import net.minecraft.network.handler.DecoderHandler;
 import net.minecraft.network.handler.PacketException;
 import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.s2c.play.OpenScreenS2CPacket;
-import net.minecraft.network.packet.s2c.play.ParticleS2CPacket;
-import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
+import net.minecraft.network.packet.s2c.play.*;
 import net.minecraft.particle.BlockStateParticleEffect;
 
 import java.util.ArrayList;
@@ -57,9 +55,22 @@ public class PacketSniffer extends ChannelInboundHandlerAdapter {
             }
             NetworkPhase phase = getNetworkPhase(context);
             if (phase == NetworkPhase.PLAY && packet.getPacketType().side() == NetworkSide.CLIENTBOUND) {
-                if (!(packet instanceof ParticleS2CPacket packet1 && packet1.getParameters() instanceof BlockStateParticleEffect) && !(packet instanceof OpenScreenS2CPacket || packet instanceof PlayerPositionLookS2CPacket)) { // Certain particles causes a decode error for spectator clients
-                    PLAY_PACKETS.add(byteBuf.copy());
-                    RawPacketCallback.EVENT.invoker().onPacketReceived(byteBuf.copy());
+                if (!(packet instanceof ParticleS2CPacket packet1 && packet1.getParameters() instanceof BlockStateParticleEffect)) { // Certain particles causes a decode error for spectator clients
+                    switch (packet) {
+                        case OpenScreenS2CPacket ignored:
+                            break;
+                        case PlayerPositionLookS2CPacket ignored:
+                            break;
+                        case InventoryS2CPacket ignored:
+                            break;
+                        case ScreenHandlerSlotUpdateS2CPacket ignored:
+                            break;
+                        case ScreenHandlerPropertyUpdateS2CPacket ignored:
+                            break;
+                        default:
+                            PLAY_PACKETS.add(byteBuf.copy());
+                            RawPacketCallback.EVENT.invoker().onPacketReceived(byteBuf.copy());
+                    }
                 }
             }
         }
