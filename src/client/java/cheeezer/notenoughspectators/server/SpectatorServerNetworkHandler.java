@@ -18,6 +18,7 @@ import net.minecraft.network.*;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.handler.*;
 import net.minecraft.network.listener.PacketListener;
+import net.minecraft.network.message.MessageType;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.c2s.config.ReadyC2SPacket;
 import net.minecraft.network.packet.c2s.handshake.ConnectionIntent;
@@ -41,9 +42,12 @@ import net.minecraft.util.Uuids;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.GameMode;
+import net.minecraft.world.World;
 import org.slf4j.Logger;
 
 import java.nio.channels.ClosedChannelException;
+import java.util.Optional;
 import java.util.random.RandomGenerator;
 
 public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<Packet<?>> {
@@ -137,11 +141,22 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                         }
                     }).start();
 
+                    ClientPlayerEntity oldPlayer = MinecraftClient.getInstance().player; // Retains previous player instance during transition
                     RawPacketCallback.EVENT.register((buf) -> {
                         if (buf.getByte(0) == 0x2B) {
                             // Modify the packet to give the spectator an entity ID that is not used by any other player
                             // TODO - This is a hacky way to do this, find a better way
                             buf.setByte(1, Integer.MAX_VALUE);
+                            // Alert the spectator player that they are switching servers
+                            sendPacket(new ProfilelessChatMessageS2CPacket(Text.of("Switching server..."), MessageType.params(MessageType.SAY_COMMAND, oldPlayer.getWorld().getRegistryManager(), Text.of("NotEnoughSpectators"))));
+                            // Respawn spectator player
+                            World world = oldPlayer.getWorld();
+                            if (world == null) {
+                                NotEnoughSpectators.LOGGER.warn("World is null, cannot respawn spectator player");
+                                return;
+                            }
+                            sendPacket(new PlayerRespawnS2CPacket(new CommonPlayerSpawnInfo(world.getDimensionEntry(), world.getRegistryKey(), 0, GameMode.CREATIVE, null, world.isDebugWorld(), false, Optional.empty(), 0, 0), (byte) 0));
+
                             new Thread(() -> {
                                 try {
                                     Thread.sleep(100);
@@ -154,9 +169,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                         }
                         context.channel().writeAndFlush(buf);
                     });
-                    PacketCallback.EVENT.register((packet1) -> {
-                        sendPacket(packet1);
-                    });
+                    PacketCallback.EVENT.register(this::sendPacket);
 
                     MovementCallback.EVENT.register((movementPacket) -> {
                         ClientPlayerEntity player = MinecraftClient.getInstance().player;
