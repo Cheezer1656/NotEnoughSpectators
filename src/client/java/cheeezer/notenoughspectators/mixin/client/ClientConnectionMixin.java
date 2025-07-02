@@ -1,17 +1,15 @@
 package cheeezer.notenoughspectators.mixin.client;
 
+import cheeezer.notenoughspectators.NESUtil;
 import cheeezer.notenoughspectators.PacketSniffer;
 import cheeezer.notenoughspectators.event.MovementCallback;
 import cheeezer.notenoughspectators.event.PacketCallback;
-import com.mojang.datafixers.util.Pair;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPipeline;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.item.ItemStack;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.NetworkPhase;
 import net.minecraft.network.NetworkSide;
@@ -20,8 +18,6 @@ import net.minecraft.network.listener.PacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.c2s.play.*;
 import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
-import net.minecraft.network.packet.s2c.play.EntityEquipmentUpdateS2CPacket;
-import net.minecraft.network.packet.s2c.play.ScreenHandlerSlotUpdateS2CPacket;
 import net.minecraft.util.Hand;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
@@ -30,8 +26,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import java.util.List;
 
 @Mixin(ClientConnection.class)
 public abstract class ClientConnectionMixin {
@@ -68,11 +62,7 @@ public abstract class ClientConnectionMixin {
     @Inject(method = "channelRead0", at = @At("RETURN"))
     private void hookChannelReadEnd(ChannelHandlerContext context, Packet<?> packet, CallbackInfo ci) {
         if (this.channel.isOpen() && packetListener != null && packetListener.accepts(packet) && side == NetworkSide.CLIENTBOUND) {
-            ClientPlayerEntity player = MinecraftClient.getInstance().player;
-            if (packet instanceof ScreenHandlerSlotUpdateS2CPacket slotUpdatePacket && slotUpdatePacket.getSlot() == player.getInventory().getSelectedSlot() + 36) {
-                System.out.println("Received slot update packet for main hand: " + slotUpdatePacket.getStack());
-                PacketCallback.EVENT.invoker().onPacketReceived(new EntityEquipmentUpdateS2CPacket(player.getId(), List.of(Pair.of(EquipmentSlot.MAINHAND, slotUpdatePacket.getStack()))));
-            }
+            // Handle packets after they have been handled by the listener (sometimes doesn't work because some handler methods call themselves again on a new thread)
         }
     }
 
@@ -91,8 +81,8 @@ public abstract class ClientConnectionMixin {
             PacketCallback.EVENT.invoker().onPacketReceived(new EntityAnimationS2CPacket(player, handSwingPacket.getHand() == Hand.MAIN_HAND ? 0 : 3));
         } else if (packet instanceof PlayerInteractItemC2SPacket useItemPacket) {
             PacketCallback.EVENT.invoker().onPacketReceived(new EntityAnimationS2CPacket(player, useItemPacket.getHand() == Hand.MAIN_HAND ? 0 : 3));
-        } else if (packet instanceof UpdateSelectedSlotC2SPacket || packet instanceof CreativeInventoryActionC2SPacket) {
-            PacketCallback.EVENT.invoker().onPacketReceived(new EntityEquipmentUpdateS2CPacket(player.getId(), List.of(Pair.of(EquipmentSlot.MAINHAND, player.getMainHandStack()))));
+        } else if (packet instanceof UpdateSelectedSlotC2SPacket slotUpdatePacket && NESUtil.isEquipmentSlot(slotUpdatePacket.getSelectedSlot() + 36) || packet instanceof CreativeInventoryActionC2SPacket invActionPacket && NESUtil.isEquipmentSlot(invActionPacket.slot())) {
+            NESUtil.updatePlayerEquipment();
         }
     }
 
