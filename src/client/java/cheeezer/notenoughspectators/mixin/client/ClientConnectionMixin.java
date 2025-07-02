@@ -66,10 +66,6 @@ public abstract class ClientConnectionMixin {
     private void hookChannelReadEnd(ChannelHandlerContext context, Packet<?> packet, CallbackInfo ci) {
         if (this.channel.isOpen() && packetListener != null && packetListener.accepts(packet) && side == NetworkSide.CLIENTBOUND) {
             // Handle packets after they have been handled by the listener (sometimes doesn't work because some handler methods call themselves again on a new thread)
-            if (packet instanceof GameJoinS2CPacket || packet instanceof ChunkDataS2CPacket || packet instanceof PlayerRespawnS2CPacket) {
-                if (packet instanceof ChunkDataS2CPacket) System.out.print("<C>");
-                else System.out.println(packet);
-            }
         }
     }
 
