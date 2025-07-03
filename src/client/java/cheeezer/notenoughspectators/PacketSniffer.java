@@ -1,11 +1,9 @@
 package cheeezer.notenoughspectators;
 
-import cheeezer.notenoughspectators.event.PacketCallback;
 import cheeezer.notenoughspectators.event.RawPacketCallback;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.network.NetworkPhase;
 import net.minecraft.network.NetworkSide;
 import net.minecraft.network.OpaqueByteBufHolder;
