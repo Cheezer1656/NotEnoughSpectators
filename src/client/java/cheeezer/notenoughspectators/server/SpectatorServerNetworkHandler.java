@@ -193,6 +193,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                                 } else {
                                     sendPacket(new EntityPositionSyncS2CPacket(player.getId(), PlayerPosition.fromEntity(player), player.isOnGround()));
                                 }
+                                sendPacket(new EntitySetHeadYawS2CPacket(player, MathHelper.packDegrees(player.headYaw)));
                             }
                             case MovementCallback.MovementType.POSITION -> {
                                 Vec3d delta = player.getPos().subtract(player.lastX, player.lastY, player.lastZ).multiply(4096.0);
