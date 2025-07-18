@@ -3,9 +3,9 @@
 	"id": "not-enough-spectators",
 	"version": "${version}",
 	"name": "Not Enough Spectators",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Share your singleplayer and multiplayer gameplay with others by allowing them to spectate your game!",
 	"authors": [
-		"Me!"
+		"Cheezer"
 	],
 	"contact": {
 		"homepage": "https://fabricmc.net/",
@@ -35,8 +35,5 @@
 		"minecraft": "~1.21.6",
 		"java": ">=21",
 		"fabric-api": "*"
-	},
-	"suggests": {
-		"another-mod": "*"
 	}
 }
