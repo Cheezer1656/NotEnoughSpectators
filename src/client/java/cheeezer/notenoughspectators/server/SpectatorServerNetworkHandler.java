@@ -120,11 +120,9 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                 }
                 break;
             case NetworkPhase.CONFIGURATION:
-                System.out.println(packet);
                 if (packet instanceof ReadyC2SPacket) {
                     phase = NetworkPhase.PLAY;
                     DynamicRegistryManager.Immutable registryManager = MinecraftClient.getInstance().getNetworkHandler().getRegistryManager();
-                    System.out.println("Registry Manager: " + registryManager);
                     transitionOutbound(PlayStateFactories.S2C.bind(RegistryByteBuf.makeFactory(registryManager)));
 
                     codec = context.channel().pipeline().get(EncoderHandler.class).state.codec();
