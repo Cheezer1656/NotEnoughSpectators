@@ -1,9 +1,6 @@
 package cheeezer.notenoughspectators.server;
 
-import cheeezer.notenoughspectators.NESUtil;
-import cheeezer.notenoughspectators.NotEnoughSpectators;
-import cheeezer.notenoughspectators.PacketSniffer;
-import cheeezer.notenoughspectators.PlayerTaskQueue;
+import cheeezer.notenoughspectators.*;
 import cheeezer.notenoughspectators.event.MovementCallback;
 import cheeezer.notenoughspectators.event.PacketCallback;
 import cheeezer.notenoughspectators.event.RawPacketCallback;
@@ -167,11 +164,15 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                                 // Alert the spectator player that they are switching servers
                                 sendPacket(new ProfilelessChatMessageS2CPacket(Text.of("Switching server..."), MessageType.params(MessageType.SAY_COMMAND, player.getWorld().getRegistryManager(), Text.of("NotEnoughSpectators"))));
                                 // Respawn spectator player
-                                System.out.println("Respawning spectator player");
                                 World world = player.getWorld();
-                                sendPacket(new PlayerRespawnS2CPacket(new CommonPlayerSpawnInfo(world.getDimensionEntry(), world.getRegistryKey(), 0, GameMode.CREATIVE, null, world.isDebugWorld(), false, Optional.empty(), 0, 0), (byte) 0));
+                                sendPacket(new PlayerRespawnS2CPacket(new CommonPlayerSpawnInfo(world.getDimensionEntry(), world.getRegistryKey(), PacketSniffer.getSeed(), GameMode.CREATIVE, null, world.isDebugWorld(), false, Optional.empty(), 0, 0), (byte) 0));
                                 // Reconfigure the spectator client
                                 configureClient();
+                            });
+
+                            // Update spectator position when host receives new position
+                            PlayerTaskQueue.addPositionTask((pos) -> {
+                                sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, pos, Collections.emptySet()));
                             });
                         }
                         context.channel().writeAndFlush(buf);
@@ -278,6 +279,9 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
         // Give the spectator a compass
         sendPacket(new SetPlayerInventoryS2CPacket(EquipmentSlot.MAINHAND.getIndex(), new ItemStack(RegistryEntry.of(Items.COMPASS), 1, ComponentChanges.builder().add(DataComponentTypes.ITEM_NAME, Text.of("Teleport to Host")).build())));
+
+        // Release queued packets
+        PacketSniffer.releaseQueuedPackets();
     }
 
     public void transitionOutbound(NetworkState<?> newState) {

@@ -17,7 +17,6 @@ import net.minecraft.network.handler.*;
 import net.minecraft.network.listener.PacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.c2s.play.*;
-import net.minecraft.network.packet.s2c.play.ChunkDataS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
@@ -66,6 +65,11 @@ public abstract class ClientConnectionMixin {
     private void hookChannelReadEnd(ChannelHandlerContext context, Packet<?> packet, CallbackInfo ci) {
         if (this.channel.isOpen() && packetListener != null && packetListener.accepts(packet) && side == NetworkSide.CLIENTBOUND) {
             // Handle packets after they have been handled by the listener (sometimes doesn't work because some handler methods call themselves again on a new thread)
+            if (packet instanceof GameJoinS2CPacket gameJoinPacket) {
+                PacketSniffer.setSeed(gameJoinPacket.commonPlayerSpawnInfo().seed());
+            } else if (packet instanceof PlayerRespawnS2CPacket respawnPacket) {
+                PacketSniffer.setSeed(respawnPacket.commonPlayerSpawnInfo().seed());
+            }
         }
     }
 

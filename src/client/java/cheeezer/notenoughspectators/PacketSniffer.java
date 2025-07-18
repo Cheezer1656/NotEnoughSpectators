@@ -18,11 +18,15 @@ import java.util.ArrayList;
 public class PacketSniffer extends ChannelInboundHandlerAdapter {
     private static final ArrayList<Packet> CONFIG_PACKETS = new ArrayList<>();
     private static final ArrayList<ByteBuf> PLAY_PACKETS = new ArrayList<>();
+    private static final ArrayList<ByteBuf> QUEUED_PACKETS = new ArrayList<>();
+    private static boolean queue = false;
+    private static long seed = 0;
 
     public PacketSniffer() {
         // Clear all packets when joining a new server
         CONFIG_PACKETS.clear();
         PLAY_PACKETS.clear();
+        QUEUED_PACKETS.clear();
     }
 
     public static ArrayList<Packet<?>> getConfigPackets() {
@@ -35,6 +39,22 @@ public class PacketSniffer extends ChannelInboundHandlerAdapter {
 
     public static void addConfigPacket(Packet<?> packet) {
         CONFIG_PACKETS.add(packet);
+    }
+
+    public static long getSeed() {
+        return seed;
+    }
+
+    public static void setSeed(long newSeed) {
+        seed = newSeed;
+    }
+
+    public static void releaseQueuedPackets() {
+        queue = false;
+        for (ByteBuf byteBuf : QUEUED_PACKETS) {
+            RawPacketCallback.EVENT.invoker().onPacketReceived(byteBuf.copy());
+        }
+        QUEUED_PACKETS.clear();
     }
 
     @Override
@@ -75,7 +95,14 @@ public class PacketSniffer extends ChannelInboundHandlerAdapter {
                             if (gameStateChangePacket.getReason() == GameStateChangeS2CPacket.GAME_MODE_CHANGED) break;
                         default:
                             PLAY_PACKETS.add(byteBuf.copy());
-                            RawPacketCallback.EVENT.invoker().onPacketReceived(byteBuf.copy());
+                            if (queue) {
+                                QUEUED_PACKETS.add(byteBuf.copy());
+                            } else {
+                                RawPacketCallback.EVENT.invoker().onPacketReceived(byteBuf.copy());
+                            }
+                            if (packet instanceof GameJoinS2CPacket) {
+                                queue = true;
+                            }
                     }
                 }
             }
