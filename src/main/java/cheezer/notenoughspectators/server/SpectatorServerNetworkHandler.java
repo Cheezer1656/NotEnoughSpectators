@@ -100,7 +100,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
         }
     }
 
-    public void setConnectionState(EnumConnectionState newState) {
+    private void setConnectionState(EnumConnectionState newState) {
         channel.attr(attrKeyConnectionState).set(newState);
         channel.config().setAutoRead(true);
     }
