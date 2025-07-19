@@ -6,7 +6,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 
 @Mod(modid = "notenoughspectators", useMetadata=true)
-public class ExampleMod {
+public class NotEnoughSpectators {
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         System.out.println("Dirt: " + Blocks.dirt.getUnlocalizedName());
