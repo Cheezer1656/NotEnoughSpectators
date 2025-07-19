@@ -1,7 +1,6 @@
 package cheezer.notenoughspectators;
 
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.init.Blocks;
+import cheezer.notenoughspectators.server.SpectatorServer;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 
@@ -9,8 +8,7 @@ import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 public class NotEnoughSpectators {
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
-        System.out.println("Dirt: " + Blocks.dirt.getUnlocalizedName());
-		// Below is a demonstration of an access-transformed class access.
-        System.out.println("Color State: " + new GlStateManager.Color());
+        SpectatorServer server = new SpectatorServer(25565);
+        server.start();
     }
 }
