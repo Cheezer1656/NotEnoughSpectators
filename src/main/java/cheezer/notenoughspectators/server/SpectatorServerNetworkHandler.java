@@ -6,12 +6,20 @@ import com.mojang.authlib.GameProfile;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.EnumConnectionState;
 import net.minecraft.network.Packet;
 import net.minecraft.network.handshake.client.C00Handshake;
 import net.minecraft.network.login.client.C00PacketLoginStart;
 import net.minecraft.network.login.server.S02PacketLoginSuccess;
+import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement;
 import net.minecraft.network.play.server.S00PacketKeepAlive;
+import net.minecraft.network.play.server.S08PacketPlayerPosLook;
+import net.minecraft.network.play.server.S2FPacketSetSlot;
 import net.minecraft.network.status.client.C00PacketServerQuery;
 import net.minecraft.network.status.client.C01PacketPing;
 import net.minecraft.network.status.server.S00PacketServerInfo;
@@ -19,12 +27,14 @@ import net.minecraft.network.status.server.S01PacketPong;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
+import java.util.Collections;
 import java.util.Random;
 import java.util.UUID;
 
 import static net.minecraft.network.NetworkManager.attrKeyConnectionState;
 
 public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<Packet<?>>  {
+    private static final ItemStack TELEPORT_ITEM = createTeleportItem();
     private final SpectatorServer server;
     private Channel channel;
 
@@ -70,6 +80,8 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                         channel.writeAndFlush(packet1);
                     }
 
+                    configureClient();
+
                     MinecraftForge.EVENT_BUS.register(this);
 
                     new Thread(() -> {
@@ -87,6 +99,12 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     });
                 }
             } else if (phase == EnumConnectionState.PLAY) {
+                if (packet instanceof C08PacketPlayerBlockPlacement) {
+                    ItemStack itemStack = ((C08PacketPlayerBlockPlacement) packet).getStack();
+                    if (itemStack != null && itemStack.getItem() != TELEPORT_ITEM.getItem()) return;
+                    EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+                    channel.writeAndFlush(new S08PacketPlayerPosLook(player.posX, player.posY, player.posZ, player.rotationYaw, player.rotationPitch, Collections.emptySet()));
+                }
             } else {
                 System.out.println("Unexpected packet in phase " + phase + ": " + packet.getClass().getSimpleName());
             }
@@ -98,6 +116,19 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
         if (channel.isOpen() && getNetworkPhase() == EnumConnectionState.PLAY) {
             channel.writeAndFlush(event.getPacket());
         }
+    }
+
+    private void configureClient() {
+        channel.writeAndFlush(new S2FPacketSetSlot(0, 36, TELEPORT_ITEM));
+    }
+
+    private static ItemStack createTeleportItem() {
+        NBTTagCompound nbt = new NBTTagCompound();
+        nbt.setTag("display", new NBTTagCompound());
+        nbt.getCompoundTag("display").setString("Name", "Teleport to Host");
+        ItemStack itemStack = new ItemStack(Items.compass, 1);
+        itemStack.setTagCompound(nbt);
+        return itemStack;
     }
 
     private void setConnectionState(EnumConnectionState newState) {
