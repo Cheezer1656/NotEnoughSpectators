@@ -2,12 +2,15 @@ package cheezer.notenoughspectators.server;
 
 import cheezer.notenoughspectators.PacketEvent;
 import cheezer.notenoughspectators.PacketStore;
+import cheezer.notenoughspectators.PlayerTaskQueue;
+import com.google.common.base.Predicate;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -17,15 +20,15 @@ import net.minecraft.network.handshake.client.C00Handshake;
 import net.minecraft.network.login.client.C00PacketLoginStart;
 import net.minecraft.network.login.server.S02PacketLoginSuccess;
 import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement;
-import net.minecraft.network.play.server.S00PacketKeepAlive;
-import net.minecraft.network.play.server.S08PacketPlayerPosLook;
-import net.minecraft.network.play.server.S2FPacketSetSlot;
+import net.minecraft.network.play.server.*;
 import net.minecraft.network.status.client.C00PacketServerQuery;
 import net.minecraft.network.status.client.C01PacketPing;
 import net.minecraft.network.status.server.S00PacketServerInfo;
 import net.minecraft.network.status.server.S01PacketPong;
+import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.Random;
@@ -80,7 +83,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                         channel.writeAndFlush(packet1);
                     }
 
-                    configureClient();
+                    configureClient(Minecraft.getMinecraft().thePlayer, true);
 
                     MinecraftForge.EVENT_BUS.register(this);
 
@@ -115,10 +118,32 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
     public void onPacketReceived(PacketEvent event) {
         if (channel.isOpen() && getNetworkPhase() == EnumConnectionState.PLAY) {
             channel.writeAndFlush(event.getPacket());
+            if (event.getPacket() instanceof S01PacketJoinGame) {
+                PlayerTaskQueue.addTask((player) -> {
+                    configureClient(player, false);
+                    PlayerTaskQueue.addPositionTask((pos) -> {
+                        channel.writeAndFlush(new S08PacketPlayerPosLook(
+                                pos.x, pos.y, pos.z, pos.yaw, pos.pitch, Collections.emptySet()));
+                        channel.writeAndFlush(new S0CPacketSpawnPlayer(Minecraft.getMinecraft().thePlayer));
+                    });
+                });
+            }
         }
     }
 
-    private void configureClient() {
+    private void configureClient(EntityPlayer player, boolean isFirstJoin) {
+        // Respawn the client to reload the world
+        World world = player.worldObj;
+        channel.writeAndFlush(new S07PacketRespawn(2, world.getDifficulty(), world.getWorldType(), world.getWorldInfo().getGameType()));
+        channel.writeAndFlush(new S07PacketRespawn(world.provider.getDimensionId(), world.getDifficulty(), world.getWorldType(), world.getWorldInfo().getGameType()));
+
+        // Teleport the client to the host
+        if (isFirstJoin) {
+            channel.writeAndFlush(new S08PacketPlayerPosLook(player.posX, player.posY, player.posZ, player.rotationYaw, player.rotationPitch, Collections.emptySet()));
+            channel.writeAndFlush(new S0CPacketSpawnPlayer(Minecraft.getMinecraft().thePlayer));
+        }
+
+        // Give the client a teleport item
         channel.writeAndFlush(new S2FPacketSetSlot(0, 36, TELEPORT_ITEM));
     }
 
