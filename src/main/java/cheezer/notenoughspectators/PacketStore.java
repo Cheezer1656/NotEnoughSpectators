@@ -1,6 +1,5 @@
 package cheezer.notenoughspectators;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import net.minecraft.network.Packet;
 

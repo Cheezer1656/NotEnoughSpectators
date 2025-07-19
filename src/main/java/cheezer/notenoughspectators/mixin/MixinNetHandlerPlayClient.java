@@ -1,5 +1,6 @@
 package cheezer.notenoughspectators.mixin;
 
+import cheezer.notenoughspectators.PlayerPosition;
 import cheezer.notenoughspectators.PlayerTaskQueue;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.network.NetHandlerPlayClient;
@@ -19,7 +20,7 @@ public class MixinNetHandlerPlayClient {
     @Inject(method = "handlePlayerPosLook", at = @At("TAIL"))
     private void onHandlePlayerPosLook(CallbackInfo ci) {
         EntityPlayer player = Minecraft.getMinecraft().thePlayer;
-        PlayerTaskQueue.processPositionTasks(new PlayerTaskQueue.PlayerPosition(
+        PlayerTaskQueue.processPositionTasks(new PlayerPosition(
                 player.posX,
                 player.posY,
                 player.posZ,

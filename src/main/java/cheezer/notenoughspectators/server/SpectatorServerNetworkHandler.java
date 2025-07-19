@@ -1,16 +1,15 @@
 package cheezer.notenoughspectators.server;
 
-import cheezer.notenoughspectators.PacketEvent;
+import cheezer.notenoughspectators.event.MovementEvent;
+import cheezer.notenoughspectators.event.PacketEvent;
 import cheezer.notenoughspectators.PacketStore;
 import cheezer.notenoughspectators.PlayerTaskQueue;
-import com.google.common.base.Predicate;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -25,10 +24,10 @@ import net.minecraft.network.status.client.C00PacketServerQuery;
 import net.minecraft.network.status.client.C01PacketPing;
 import net.minecraft.network.status.server.S00PacketServerInfo;
 import net.minecraft.network.status.server.S01PacketPong;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.Random;
@@ -128,6 +127,36 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     });
                 });
             }
+        }
+    }
+
+    @SubscribeEvent
+    public void onMovementEvent(MovementEvent event) {
+        if (channel.isOpen() && getNetworkPhase() == EnumConnectionState.PLAY) {
+            // Modified copy of code from EntityTrackerEntry.updatePlayerList
+            EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+            int id = player.getEntityId();
+            int k = MathHelper.floor_double(player.lastTickPosX * 32.0);
+            int j1 = MathHelper.floor_double(player.lastTickPosY * 32.0);
+            int k1 = MathHelper.floor_double(player.lastTickPosZ * 32.0);
+            int l1 = MathHelper.floor_float(player.prevRotationYaw * 256.0f / 360.0f);
+            int i2 = MathHelper.floor_float(player.prevRotationPitch * 256.0f / 360.0f);
+            int j2 = k - MathHelper.floor_double(player.posX);
+            int k2 = j1 - MathHelper.floor_double(player.posY);
+            int i = k1 - MathHelper.floor_double(player.posZ);
+            boolean flag = Math.abs(j2) >= 4 || Math.abs(k2) >= 4 || Math.abs(i) >= 4;
+            boolean flag1 = Math.abs(l1 - player.rotationYaw) >= 4 || Math.abs(i2 - player.rotationPitch) >= 4;
+            if (flag) {
+                if (j2 >= -128 && j2 < 128 && k2 >= -128 && k2 < 128 && i >= -128 && i < 128) {
+                    channel.writeAndFlush(new S14PacketEntity.S15PacketEntityRelMove(id, (byte)j2, (byte)k2, (byte)i, player.onGround));
+                    if (flag1) {
+                        channel.writeAndFlush(new S14PacketEntity.S16PacketEntityLook(id, (byte)l1, (byte)i2, player.onGround));
+                    }
+                } else {
+                    channel.writeAndFlush(new S18PacketEntityTeleport(id, k, j1, k1, (byte) l1, (byte) i2, player.onGround));
+                }
+            }
+            if (flag1) channel.writeAndFlush(new S19PacketEntityHeadLook(player, (byte) l1));
         }
     }
 
