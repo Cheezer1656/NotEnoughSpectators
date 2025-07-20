@@ -132,9 +132,9 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
     @SubscribeEvent
     public void onMovementEvent(MovementEvent event) {
-        if (channel.isOpen() && getNetworkPhase() == EnumConnectionState.PLAY) {
+        EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+        if (channel.isOpen() && getNetworkPhase() == EnumConnectionState.PLAY && player != null) {
             // Modified copy of code from EntityTrackerEntry.updatePlayerList
-            EntityPlayer player = Minecraft.getMinecraft().thePlayer;
             int id = player.getEntityId();
             int k = MathHelper.floor_double(player.lastTickPosX * 32.0);
             int j1 = MathHelper.floor_double(player.lastTickPosY * 32.0);
