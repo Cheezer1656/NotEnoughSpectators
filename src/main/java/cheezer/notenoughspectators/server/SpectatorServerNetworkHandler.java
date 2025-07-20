@@ -90,7 +90,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                         Random rand = new Random();
                         while (channel.isOpen()) {
                             try {
-                                Thread.sleep(2000); // 40 ticks
+                                Thread.sleep(10000);
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
                                 break;
@@ -98,7 +98,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
                             channel.writeAndFlush(new S00PacketKeepAlive(rand.nextInt()));
                         }
-                    });
+                    }).start();
                 }
             } else if (phase == EnumConnectionState.PLAY) {
                 if (packet instanceof C08PacketPlayerBlockPlacement) {
