@@ -7,10 +7,10 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.AttributeKey;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.*;
 import net.minecraft.network.play.client.C03PacketPlayer;
-import net.minecraft.network.play.server.S01PacketJoinGame;
-import net.minecraft.network.play.server.S08PacketPlayerPosLook;
+import net.minecraft.network.play.server.*;
 import net.minecraftforge.common.MinecraftForge;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -41,8 +41,10 @@ public class MixinNetworkManager {
             EnumConnectionState phase = getNetworkPhase();
             if (packet instanceof S08PacketPlayerPosLook) {
                 MinecraftForge.EVENT_BUS.post(new MovementEvent());
+            } else if (packet instanceof S07PacketRespawn) {
+                MinecraftForge.EVENT_BUS.post(new PacketEvent(new S0CPacketSpawnPlayer(Minecraft.getMinecraft().thePlayer)));
             }
-            else if (phase == EnumConnectionState.PLAY) {
+            else if (phase == EnumConnectionState.PLAY && !(packet instanceof S39PacketPlayerAbilities || packet instanceof S2DPacketOpenWindow || packet instanceof S2EPacketCloseWindow || packet instanceof S2FPacketSetSlot || packet instanceof S30PacketWindowItems || (packet instanceof S2BPacketChangeGameState && ((S2BPacketChangeGameState) packet).getGameState() == 3))) {
                 if (packet instanceof S01PacketJoinGame) {
                     // Create copy of the packet to prevent modification of the original packet
                     PacketBuffer data = new PacketBuffer(Unpooled.buffer());
