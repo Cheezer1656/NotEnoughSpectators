@@ -3,13 +3,17 @@ package cheezer.notenoughspectators.mixin;
 import cheezer.notenoughspectators.event.MovementEvent;
 import cheezer.notenoughspectators.event.PacketEvent;
 import cheezer.notenoughspectators.PacketStore;
+import cheezer.notenoughspectators.server.SpectatorServerNetworkHandler;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.AttributeKey;
 import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.network.*;
 import net.minecraft.network.play.client.C03PacketPlayer;
+import net.minecraft.network.play.client.C09PacketHeldItemChange;
+import net.minecraft.network.play.client.C0EPacketClickWindow;
 import net.minecraft.network.play.server.*;
 import net.minecraftforge.common.MinecraftForge;
 import org.spongepowered.asm.mixin.Final;
@@ -61,8 +65,11 @@ public class MixinNetworkManager {
 
     @Inject(method = "sendPacket", at = @At("HEAD"))
     private void onSendPacket(Packet<?> packet, CallbackInfo ci) {
-        if (this.channel.isOpen() && packet instanceof C03PacketPlayer) {
-            MinecraftForge.EVENT_BUS.post(new MovementEvent());
+        if (this.channel.isOpen()) {
+            EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+            if (packet instanceof C03PacketPlayer) MinecraftForge.EVENT_BUS.post(new MovementEvent());
+            else if (packet instanceof C09PacketHeldItemChange) MinecraftForge.EVENT_BUS.post(new PacketEvent(new S04PacketEntityEquipment(player.getEntityId(), 0, player.inventory.getCurrentItem())));
+            else if (packet instanceof C0EPacketClickWindow) SpectatorServerNetworkHandler.updateEquipment();
         }
     }
 

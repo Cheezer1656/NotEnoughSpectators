@@ -123,7 +123,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     PlayerTaskQueue.addPositionTask((pos) -> {
                         channel.writeAndFlush(new S08PacketPlayerPosLook(
                                 pos.x, pos.y, pos.z, pos.yaw, pos.pitch, Collections.emptySet()));
-                        channel.writeAndFlush(new S0CPacketSpawnPlayer(Minecraft.getMinecraft().thePlayer));
+                        spawnHostPlayer();
                     });
                 });
             }
@@ -161,6 +161,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
     }
 
     private void configureClient(EntityPlayer player, boolean isFirstJoin) {
+        if (player == null || !channel.isOpen()) return;
         // Respawn the client to reload the world
         World world = player.worldObj;
         channel.writeAndFlush(new S07PacketRespawn(2, world.getDifficulty(), world.getWorldType(), world.getWorldInfo().getGameType()));
@@ -169,11 +170,28 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
         // Teleport the client to the host
         if (isFirstJoin) {
             channel.writeAndFlush(new S08PacketPlayerPosLook(player.posX, player.posY, player.posZ, MathHelper.floor_float(player.rotationYaw * 256.0f / 360.0f), MathHelper.floor_float(player.rotationPitch * 256.0f / 360.0f), Collections.emptySet()));
-            channel.writeAndFlush(new S0CPacketSpawnPlayer(Minecraft.getMinecraft().thePlayer));
+            spawnHostPlayer();
         }
 
         // Give the client a teleport item
         channel.writeAndFlush(new S2FPacketSetSlot(0, 36, TELEPORT_ITEM));
+    }
+
+    private void spawnHostPlayer() {
+        EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+        channel.writeAndFlush(new S0CPacketSpawnPlayer(player));
+        for (int slot = 0; slot < 5; slot++) {
+            ItemStack itemStack = player.getEquipmentInSlot(slot);
+            if (itemStack != null)
+                channel.writeAndFlush(new S04PacketEntityEquipment(player.getEntityId(), slot, itemStack));
+        }
+    }
+
+    public static void updateEquipment() {
+        EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+        for (int slot = 0; slot < 5; slot++) {
+            MinecraftForge.EVENT_BUS.post(new PacketEvent(new S04PacketEntityEquipment(player.getEntityId(), slot, player.getEquipmentInSlot(slot))));
+        }
     }
 
     private static ItemStack createTeleportItem() {

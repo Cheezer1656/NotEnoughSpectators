@@ -2,9 +2,11 @@ package cheezer.notenoughspectators.mixin;
 
 import cheezer.notenoughspectators.PlayerPosition;
 import cheezer.notenoughspectators.PlayerTaskQueue;
+import cheezer.notenoughspectators.server.SpectatorServerNetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.network.play.server.S2FPacketSetSlot;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -27,5 +29,10 @@ public class MixinNetHandlerPlayClient {
                 player.rotationYaw,
                 player.rotationPitch
         ));
+    }
+
+    @Inject(method = "handleSetSlot", at = @At("TAIL"))
+    private void onHandleSetSlot(S2FPacketSetSlot packet, CallbackInfo ci) {
+        if (packet.func_149175_c() == 0) SpectatorServerNetworkHandler.updateEquipment();
     }
 }
