@@ -168,7 +168,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
         // Teleport the client to the host
         if (isFirstJoin) {
-            channel.writeAndFlush(new S08PacketPlayerPosLook(player.posX, player.posY, player.posZ, player.rotationYaw, player.rotationPitch, Collections.emptySet()));
+            channel.writeAndFlush(new S08PacketPlayerPosLook(player.posX, player.posY, player.posZ, MathHelper.floor_float(player.rotationYaw * 256.0f / 360.0f), MathHelper.floor_float(player.rotationPitch * 256.0f / 360.0f), Collections.emptySet()));
             channel.writeAndFlush(new S0CPacketSpawnPlayer(Minecraft.getMinecraft().thePlayer));
         }
 
