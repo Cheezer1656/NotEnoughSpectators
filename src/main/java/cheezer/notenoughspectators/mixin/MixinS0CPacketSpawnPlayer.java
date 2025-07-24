@@ -18,9 +18,7 @@ public class MixinS0CPacketSpawnPlayer {
     private void writePacketData(DataWatcher watcher, PacketBuffer buf) throws Exception {
         if (watcher == null) {
             for (DataWatcher.WatchableObject watchableObject : this.field_148958_j) {
-                java.lang.reflect.Method method = DataWatcher.class.getDeclaredMethod("writeWatchableObjectToPacketBuffer", PacketBuffer.class, DataWatcher.WatchableObject.class);
-                method.setAccessible(true);
-                method.invoke(null, buf, watchableObject);
+                InvokerDataWatcher.invokeWriteWatchableObjectToPacketBuffer_notenoughspectators(buf, watchableObject);
             }
             buf.writeByte(127);
         } else {
