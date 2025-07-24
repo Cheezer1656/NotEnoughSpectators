@@ -167,14 +167,18 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
         channel.writeAndFlush(new S07PacketRespawn(2, world.getDifficulty(), world.getWorldType(), world.getWorldInfo().getGameType()));
         channel.writeAndFlush(new S07PacketRespawn(world.provider.getDimensionId(), world.getDifficulty(), world.getWorldType(), world.getWorldInfo().getGameType()));
 
-        // Teleport the client to the host
         if (isFirstJoin) {
+            // Teleport the client to the host
             channel.writeAndFlush(new S08PacketPlayerPosLook(player.posX, player.posY, player.posZ, MathHelper.floor_float(player.rotationYaw * 256.0f / 360.0f), MathHelper.floor_float(player.rotationPitch * 256.0f / 360.0f), Collections.emptySet()));
+            // Spawn the host player
             spawnHostPlayer();
         }
 
         // Give the client a teleport item
         channel.writeAndFlush(new S2FPacketSetSlot(0, 36, TELEPORT_ITEM));
+
+        // Set client to creative mode
+        channel.writeAndFlush(new S2BPacketChangeGameState(3, 1F));
     }
 
     private void spawnHostPlayer() {
