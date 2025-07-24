@@ -17,7 +17,6 @@ public class MixinS0FPacketSpawnMob {
     @Redirect(method = "writePacketData", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/DataWatcher;writeTo(Lnet/minecraft/network/PacketBuffer;)V"))
     private void writePacketData(DataWatcher watcher, PacketBuffer buf) throws Exception {
         if (watcher == null) {
-            System.out.println("Wachte is  null;");
             for (DataWatcher.WatchableObject watchableObject : this.watcher) {
                 java.lang.reflect.Method method = DataWatcher.class.getDeclaredMethod("writeWatchableObjectToPacketBuffer", PacketBuffer.class, DataWatcher.WatchableObject.class);
                 method.setAccessible(true);
