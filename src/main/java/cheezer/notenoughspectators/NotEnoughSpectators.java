@@ -17,7 +17,7 @@ public class NotEnoughSpectators {
 
     public static void startServer(int port) {
         if (server == null) {
-            server = new SpectatorServer(25565);
+            server = new SpectatorServer(port);
             server.start();
         } else throw new IllegalStateException("Server is already running");
     }
