@@ -48,7 +48,7 @@ public class MixinNetworkManager {
             } else if (packet instanceof S07PacketRespawn) {
                 MinecraftForge.EVENT_BUS.post(new PacketEvent(new S0CPacketSpawnPlayer(Minecraft.getMinecraft().thePlayer)));
             }
-            else if (phase == EnumConnectionState.PLAY && !(packet instanceof S39PacketPlayerAbilities || packet instanceof S2DPacketOpenWindow || packet instanceof S2EPacketCloseWindow || packet instanceof S2FPacketSetSlot || packet instanceof S30PacketWindowItems || (packet instanceof S2BPacketChangeGameState && ((S2BPacketChangeGameState) packet).getGameState() == 3))) {
+            else if (phase == EnumConnectionState.PLAY && !(packet instanceof S39PacketPlayerAbilities || packet instanceof S2DPacketOpenWindow || packet instanceof S2EPacketCloseWindow || packet instanceof S2FPacketSetSlot || packet instanceof S30PacketWindowItems || (packet instanceof S2BPacketChangeGameState && ((S2BPacketChangeGameState) packet).getGameState() == 3) || packet instanceof S06PacketUpdateHealth)) {
                 if (packet instanceof S01PacketJoinGame) {
                     // Create copy of the packet to prevent modification of the original packet
                     PacketBuffer data = new PacketBuffer(Unpooled.buffer());
