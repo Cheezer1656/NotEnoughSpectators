@@ -65,8 +65,8 @@ public class MixinNetworkManager {
 
     @Inject(method = "sendPacket", at = @At("HEAD"))
     private void onSendPacket(Packet<?> packet, CallbackInfo ci) {
-        if (this.channel.isOpen()) {
-            EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+        EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+        if (this.channel != null && this.channel.isOpen() && player != null) {
             if (packet instanceof C03PacketPlayer) MinecraftForge.EVENT_BUS.post(new MovementEvent());
             else if (packet instanceof C09PacketHeldItemChange) MinecraftForge.EVENT_BUS.post(new PacketEvent(new S04PacketEntityEquipment(player.getEntityId(), 0, player.inventory.getCurrentItem())));
             else if (packet instanceof C0EPacketClickWindow) SpectatorServerNetworkHandler.updateEquipment();
