@@ -22,11 +22,14 @@ import java.util.Optional;
 public class SpectatorServer extends Thread {
     private final int port;
     private final int rateLimit;
+    private boolean isSetup = false;
+    private EventLoopGroup bossGroup;
+    private EventLoopGroup workerGroup;
+    private ChannelFuture future;
     final List<ClientConnection> connections = Collections.synchronizedList(Lists.newArrayList());
 
     public SpectatorServer(int port) {
-        this.port = port;
-        this.rateLimit = 0;
+        this(port, 0);
     }
 
     public SpectatorServer(int port, int rateLimit) {
@@ -34,12 +37,14 @@ public class SpectatorServer extends Thread {
         this.rateLimit = rateLimit;
     }
 
-    public void run() {
-        EventLoopGroup bossGroup = new NioEventLoopGroup();
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+    public void setup() throws Exception {
+        if (isSetup) throw new IllegalStateException("Server is already set up");
+        bossGroup = new NioEventLoopGroup();
+        workerGroup = new NioEventLoopGroup();
+        isSetup = true;
         try {
-            ServerBootstrap b = new ServerBootstrap();
-            b.group(bossGroup, workerGroup)
+            ServerBootstrap bootstrap = new ServerBootstrap();
+            bootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
@@ -61,15 +66,23 @@ public class SpectatorServer extends Thread {
                     }).option(ChannelOption.SO_BACKLOG, 128)
                     .childOption(ChannelOption.SO_KEEPALIVE, true);
 
-            try {
-                ChannelFuture f = b.bind(port).sync();
-                f.channel().closeFuture().sync();
-            } catch (InterruptedException e) {
-                System.err.println("Server interrupted: " + e.getMessage());
-            }
-        } finally {
-            workerGroup.shutdownGracefully();
+            future = bootstrap.bind(port).sync();
+        } catch (Exception e) {
             bossGroup.shutdownGracefully();
+            workerGroup.shutdownGracefully();
+            throw e;
+        }
+    }
+
+    public void run() {
+        if (!isSetup) throw new IllegalStateException("Server is not set up");
+        try {
+            future.channel().closeFuture().sync();
+        } catch (InterruptedException e) {
+            System.err.println("Server interrupted: " + e.getMessage());
+        } finally {
+            bossGroup.shutdownGracefully();
+            workerGroup.shutdownGracefully();
         }
     }
 
