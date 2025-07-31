@@ -38,27 +38,27 @@ public class NotEnoughSpectatorsClient implements ClientModInitializer {
     }
 
     private int runShareCommand(CommandContext<FabricClientCommandSource> context) {
-        if (server != null) {
-            context.getSource().sendError(Text.literal("A server is already running!"));
-            return 0;
-        }
-        try {
-            int localPort;
-            try {
-                localPort = IntegerArgumentType.getInteger(context, "localPort");
-            } catch (IllegalArgumentException ignored) {
-                localPort = 25566; // Default port if not specified
+        new Thread(() -> {
+            if (server != null) {
+                context.getSource().sendError(Text.literal("A server is already running!"));
             }
-            startServer(localPort);
-            int port = startTunnelClient(localPort);
+            try {
+                int localPort;
+                try {
+                    localPort = IntegerArgumentType.getInteger(context, "localPort");
+                } catch (IllegalArgumentException ignored) {
+                    localPort = 25566; // Default port if not specified
+                }
+                startServer(localPort);
+                int port = startTunnelClient(localPort);
 
-            String address = String.format("%s:%d", TunnelClient.REMOTE_HOST, port);
-            context.getSource().sendFeedback(Text.literal("Server started! Join at ").append(Text.literal(address).setStyle(Style.EMPTY.withUnderline(true).withHoverEvent(new HoverEvent.ShowText(Text.literal("Click to copy"))).withClickEvent(new ClickEvent.CopyToClipboard(address)))));
-            return 1;
-        } catch (Exception e) {
-            context.getSource().sendError(Text.literal("Failed to start server: " + e.getMessage()));
-            return 0;
-        }
+                String address = String.format("%s:%d", TunnelClient.REMOTE_HOST, port);
+                context.getSource().sendFeedback(Text.literal("Server started! Join at ").append(Text.literal(address).setStyle(Style.EMPTY.withUnderline(true).withHoverEvent(new HoverEvent.ShowText(Text.literal("Click to copy"))).withClickEvent(new ClickEvent.CopyToClipboard(address)))));
+            } catch (Exception e) {
+                context.getSource().sendError(Text.literal("Failed to start server: " + e.getMessage()));
+            }
+        }).start();
+        return 1;
     }
 
     private void startServer(int port) throws Exception {
