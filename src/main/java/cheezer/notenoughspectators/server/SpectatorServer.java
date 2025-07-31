@@ -1,5 +1,6 @@
 package cheezer.notenoughspectators.server;
 
+import cheezer.notenoughspectators.NotEnoughSpectators;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -60,7 +61,7 @@ public class SpectatorServer extends Thread {
                 ChannelFuture f = b.bind(port).sync();
                 f.channel().closeFuture().sync();
             } catch (InterruptedException e) {
-                System.err.println("Server interrupted: " + e.getMessage());
+                NotEnoughSpectators.LOGGER.error("Server interrupted: {}", e.getMessage());
             }
         } finally {
             workerGroup.shutdownGracefully();

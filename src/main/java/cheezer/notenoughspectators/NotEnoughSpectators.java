@@ -5,9 +5,13 @@ import cheezer.notenoughspectators.server.SpectatorServer;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-@Mod(modid = "notenoughspectators", useMetadata=true)
+@Mod(modid = NotEnoughSpectators.MOD_ID, useMetadata=true)
 public class NotEnoughSpectators {
+    public static final String MOD_ID = "notenoughspectators";
+    public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
     private static SpectatorServer server;
 
     @Mod.EventHandler
