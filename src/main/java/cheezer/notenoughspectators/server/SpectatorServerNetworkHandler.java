@@ -170,8 +170,17 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
         if (isFirstJoin) {
             // Teleport the client to the host
             channel.writeAndFlush(new S08PacketPlayerPosLook(player.posX, player.posY, player.posZ, MathHelper.floor_float(player.rotationYaw * 256.0f / 360.0f), MathHelper.floor_float(player.rotationPitch * 256.0f / 360.0f), Collections.emptySet()));
+            // Send chunk packets here to fix bug where chunks are loaded but invisible when client has high latency first joins
+            for (Packet<?> packet : PacketStore.getChunkPackets()) {
+                channel.writeAndFlush(packet);
+            }
             // Spawn the host player
             spawnHostPlayer();
+        } else {
+            // Chunks aren't sent with the other Play packets to prevent redundant chunk loading
+            for (Packet<?> packet : PacketStore.getChunkPackets()) {
+                channel.writeAndFlush(packet);
+            }
         }
 
         // Give the client a teleport item

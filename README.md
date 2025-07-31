@@ -5,8 +5,8 @@ A Minecraft mod that allows you to invite anybody to watch your gameplay in an i
 1. Add this to your Fabric mods folder
 2. Start up your game
 3. Join any world or server
-4. Run the `/nes share <port>` command in the chat
-5. Join `localhost:<port>` from another Minecraft instance (Can be on another device, but you'll have to use `<your IP>:<port>`)
+4. Run the `/nes share` command in the chat
+5. Share the link that appears in the chat with your friends
 
 **Note:** You can also use the `/nes stop` command to stop sharing your gameplay.
 

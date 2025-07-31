@@ -57,7 +57,11 @@ public class MixinNetworkManager {
                     packet.readPacketData(data);
                     ((AccessorS01PacketJoinGame) packet).setEntityId_notenoughspectators(Integer.MAX_VALUE); // Prevents player entity ID conflicts
                 }
-                PacketStore.addPlayPacket(packet);
+                if (packet instanceof S26PacketMapChunkBulk || packet instanceof S21PacketChunkData) {
+                    PacketStore.addChunkPacket(packet);
+                } else {
+                    PacketStore.addPlayPacket(packet);
+                }
                 MinecraftForge.EVENT_BUS.post(new PacketEvent(packet));
             }
         }

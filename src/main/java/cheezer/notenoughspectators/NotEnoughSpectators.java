@@ -2,6 +2,7 @@ package cheezer.notenoughspectators;
 
 import cheezer.notenoughspectators.command.NotEnoughSpectatorsCommand;
 import cheezer.notenoughspectators.server.SpectatorServer;
+import cheezer.notenoughspectators.tunnel.TunnelClient;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
@@ -13,6 +14,7 @@ public class NotEnoughSpectators {
     public static final String MOD_ID = "notenoughspectators";
     public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
     private static SpectatorServer server;
+    private static TunnelClient tunnelClient;
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
@@ -30,6 +32,21 @@ public class NotEnoughSpectators {
         if (server != null) {
             server.interrupt();
             server = null;
+        }
+    }
+
+    public static int startTunnelClient(int port) throws Exception {
+        if (tunnelClient == null) {
+            tunnelClient = new TunnelClient(port);
+            tunnelClient.start();
+            return tunnelClient.getRemotePort();
+        } else throw new IllegalStateException("Tunnel client is already running");
+    }
+
+    public static void stopTunnelClient() {
+        if (tunnelClient != null) {
+            tunnelClient.interrupt();
+            tunnelClient = null;
         }
     }
 }
