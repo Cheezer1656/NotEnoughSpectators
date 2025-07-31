@@ -4,6 +4,7 @@ import cheezer.notenoughspectators.event.MovementEvent;
 import cheezer.notenoughspectators.event.PacketEvent;
 import cheezer.notenoughspectators.PacketStore;
 import cheezer.notenoughspectators.PlayerTaskQueue;
+import cheezer.notenoughspectators.mixin.AccessorS46PacketSetCompressionLevel;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -14,6 +15,8 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.EnumConnectionState;
+import net.minecraft.network.NettyCompressionDecoder;
+import net.minecraft.network.NettyCompressionEncoder;
 import net.minecraft.network.Packet;
 import net.minecraft.network.handshake.client.C00Handshake;
 import net.minecraft.network.login.client.C00PacketLoginStart;
@@ -36,6 +39,7 @@ import java.util.UUID;
 import static net.minecraft.network.NetworkManager.attrKeyConnectionState;
 
 public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<Packet<?>>  {
+    public static final int COMPRESSION_THRESHOLD = 256;
     private static final ItemStack TELEPORT_ITEM = createTeleportItem();
     private final SpectatorServer server;
     private Channel channel;
@@ -77,6 +81,11 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                 if (packet instanceof C00PacketLoginStart) {
                     channel.writeAndFlush(new S02PacketLoginSuccess(new GameProfile(UUID.fromString("41C82C87-7AfB-4024-BA57-13D2C99CAE77"), "[Minecraft]")));
                     setConnectionState(EnumConnectionState.PLAY);
+
+                    S46PacketSetCompressionLevel compressionPacket = new S46PacketSetCompressionLevel();
+                    ((AccessorS46PacketSetCompressionLevel) compressionPacket).setThreshold(COMPRESSION_THRESHOLD);
+                    channel.writeAndFlush(compressionPacket);
+                    setCompressionThreshold();
 
                     for (Packet<?> packet1 : PacketStore.getPlayPackets()) {
                         channel.writeAndFlush(packet1);
@@ -223,5 +232,18 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
     private EnumConnectionState getNetworkPhase() {
         return channel.attr(attrKeyConnectionState).get();
+    }
+
+    private void setCompressionThreshold() {
+        if (this.channel.pipeline().get("decompress") instanceof NettyCompressionDecoder) {
+            ((NettyCompressionDecoder)this.channel.pipeline().get("decompress")).setCompressionTreshold(COMPRESSION_THRESHOLD);
+        } else {
+            this.channel.pipeline().addBefore("decoder", "decompress", new NettyCompressionDecoder(COMPRESSION_THRESHOLD));
+        }
+        if (this.channel.pipeline().get("compress") instanceof NettyCompressionEncoder) {
+            ((NettyCompressionEncoder)this.channel.pipeline().get("decompress")).setCompressionTreshold(COMPRESSION_THRESHOLD);
+        } else {
+            this.channel.pipeline().addBefore("encoder", "compress", new NettyCompressionEncoder(COMPRESSION_THRESHOLD));
+        }
     }
 }
