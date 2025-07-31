@@ -41,6 +41,7 @@ public class NotEnoughSpectatorsClient implements ClientModInitializer {
         new Thread(() -> {
             if (server != null) {
                 context.getSource().sendError(Text.literal("A server is already running!"));
+                return;
             }
             try {
                 int localPort;
