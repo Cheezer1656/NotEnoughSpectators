@@ -1,5 +1,6 @@
 package cheeezer.notenoughspectators.tunnel;
 
+import cheeezer.notenoughspectators.NotEnoughSpectators;
 import com.google.gson.JsonParser;
 
 import java.io.BufferedReader;
@@ -27,7 +28,7 @@ public class TunnelClient extends Thread {
         out.flush();
         String response = read();
         remotePort = JsonParser.parseString(response).getAsJsonObject().get("Hello").getAsInt();
-        System.out.println("Connected to tunnel server on port " + remotePort);
+        NotEnoughSpectators.LOGGER.debug("Connected to tunnel server on port {}", remotePort);
     }
 
     public int getRemotePort() {
@@ -41,7 +42,7 @@ public class TunnelClient extends Thread {
                 if (message.isEmpty() || Thread.interrupted()) break;
                 if (message.equals("\"Heartbeat\"")) continue;
                 String uuid = JsonParser.parseString(message).getAsJsonObject().get("Connection").getAsString();
-                System.out.println("Received connection request with UUID: " + uuid);
+                NotEnoughSpectators.LOGGER.debug("Received connection request with UUID: {}", uuid);
                 TunnelChannel channel = new TunnelChannel(localPort, uuid);
                 channel.start();
             }

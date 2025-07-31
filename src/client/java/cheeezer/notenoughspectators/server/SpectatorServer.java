@@ -1,5 +1,6 @@
 package cheeezer.notenoughspectators.server;
 
+import cheeezer.notenoughspectators.NotEnoughSpectators;
 import com.google.common.collect.Lists;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -79,7 +80,7 @@ public class SpectatorServer extends Thread {
         try {
             future.channel().closeFuture().sync();
         } catch (InterruptedException e) {
-            System.err.println("Server interrupted: " + e.getMessage());
+            NotEnoughSpectators.LOGGER.error("Server interrupted: {}", e.getMessage());
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
