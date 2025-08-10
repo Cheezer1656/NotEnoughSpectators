@@ -6,7 +6,7 @@ A Minecraft mod that allows you to invite anybody to watch your gameplay in an i
 2. Start up your game
 3. Join any world or server
 4. Run the `/nes share` command in the chat
-5. Share the link that appears in the chat with your friends
+5. Get other players to join the server address given by the command (The link is to a Minecraft server, not a webpage. Join using a Minecraft client)
 
 **Note:** You can also use the `/nes stop` command to stop sharing your gameplay.
 
