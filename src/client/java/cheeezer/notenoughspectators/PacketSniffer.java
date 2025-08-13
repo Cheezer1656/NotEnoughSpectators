@@ -49,7 +49,7 @@ public class PacketSniffer extends ChannelInboundHandlerAdapter {
         seed = newSeed;
     }
 
-    public static void releaseQueuedPackets() {
+    public static synchronized void releaseQueuedPackets() {
         queue = false;
         for (ByteBuf byteBuf : QUEUED_PACKETS) {
             RawPacketCallback.EVENT.invoker().onPacketReceived(byteBuf.copy());

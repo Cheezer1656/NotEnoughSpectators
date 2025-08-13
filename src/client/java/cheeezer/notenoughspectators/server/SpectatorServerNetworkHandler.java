@@ -151,6 +151,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     }).start();
 
                     RawPacketCallback.EVENT.register((buf1) -> {
+                        if (!channel.isOpen()) return;
                         ByteBuf buf = ReferenceCountUtil.retain(buf1.copy());
                         if (VarInts.read(buf1.copy()) == 0x2B) {
                             // Modify the packet to give the spectator an entity ID that is not used by any other player
