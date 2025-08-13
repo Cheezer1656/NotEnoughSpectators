@@ -1,6 +1,10 @@
 # NotEnoughUpdates
 A Minecraft mod that allows you to invite anybody to watch your gameplay in an immersive way similar to watching as a spectator in the world
 
+**Demo Video:**
+
+[![Demo Video](https://img.youtube.com/vi/GzsgztWwvxc/0.jpg)](https://www.youtube.com/watch?v=GzsgztWwvxc)
+
 ## How to use
 1. Add this to your Fabric mods folder
 2. Start up your game
