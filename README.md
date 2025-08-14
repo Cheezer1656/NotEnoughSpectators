@@ -15,4 +15,4 @@ A Minecraft mod that allows you to invite anybody to watch your gameplay in an i
 **Note:** You can also use the `/nes stop` command to stop sharing your gameplay.
 
 ## How does it work?
-The host client captures and stores the packets it receives, then broadcasts them to spectator clients when they join, using a dummy Minecraft server.
+The host client captures and stores the packets it receives, then broadcasts them to spectator clients when they join, using a dummy Minecraft server. The dummy server is made available to the internet through tunneling the port with [Bore](https://github.com/ekzhang/bore) (it currently uses Bore's public server, `bore.pub`).
