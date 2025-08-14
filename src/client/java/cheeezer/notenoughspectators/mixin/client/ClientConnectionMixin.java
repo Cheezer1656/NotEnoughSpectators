@@ -17,10 +17,9 @@ import net.minecraft.network.handler.*;
 import net.minecraft.network.listener.PacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.c2s.play.*;
-import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
-import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
-import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
+import net.minecraft.network.packet.s2c.play.*;
 import net.minecraft.util.Hand;
+import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -90,6 +89,8 @@ public abstract class ClientConnectionMixin {
             PacketCallback.EVENT.invoker().onPacketReceived(new EntityAnimationS2CPacket(player, useItemPacket.getHand() == Hand.MAIN_HAND ? 0 : 3));
         } else if (packet instanceof UpdateSelectedSlotC2SPacket slotUpdatePacket && NESUtil.isEquipmentSlot(slotUpdatePacket.getSelectedSlot() + 36) || packet instanceof CreativeInventoryActionC2SPacket invActionPacket && NESUtil.isEquipmentSlot(invActionPacket.slot())) {
             NESUtil.updatePlayerEquipment();
+        } else if (packet instanceof ClientStatusC2SPacket statusPacket && statusPacket.getMode() == ClientStatusC2SPacket.Mode.PERFORM_RESPAWN) {
+            PacketCallback.EVENT.invoker().onPacketReceived(new EntitySpawnS2CPacket(player, 0, BlockPos.ofFloored(player.getPos())));
         }
     }
 

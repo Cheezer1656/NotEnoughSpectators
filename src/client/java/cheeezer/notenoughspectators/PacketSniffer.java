@@ -1,9 +1,12 @@
 package cheeezer.notenoughspectators;
 
+import cheeezer.notenoughspectators.event.PacketCallback;
 import cheeezer.notenoughspectators.event.RawPacketCallback;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.network.NetworkPhase;
 import net.minecraft.network.NetworkSide;
 import net.minecraft.network.OpaqueByteBufHolder;
@@ -91,17 +94,33 @@ public class PacketSniffer extends ChannelInboundHandlerAdapter {
                             break;
                         case PlayerAbilitiesS2CPacket ignored:
                             break;
+                        case EndCombatS2CPacket ignored:
+                            break;
+                        case HealthUpdateS2CPacket ignored:
+                            break;
                         case GameStateChangeS2CPacket gameStateChangePacket:
                             if (gameStateChangePacket.getReason() == GameStateChangeS2CPacket.GAME_MODE_CHANGED) break;
                         default:
-                            PLAY_PACKETS.add(byteBuf.copy());
+                            if (!(packet instanceof EntityDamageS2CPacket)) {
+                                // Don't log entity damage packets, they cause errors when players are joining
+                                PLAY_PACKETS.add(byteBuf.copy());
+                            }
                             if (queue) {
                                 QUEUED_PACKETS.add(byteBuf.copy());
                             } else {
                                 RawPacketCallback.EVENT.invoker().onPacketReceived(byteBuf.copy());
                             }
+                            ClientPlayerEntity player = MinecraftClient.getInstance().player;
                             if (packet instanceof GameJoinS2CPacket) {
                                 queue = true;
+                            } else if (packet instanceof EntityStatusS2CPacket entityStatusPacket && player != null && entityStatusPacket.getEntity(player.getWorld()) == player && entityStatusPacket.getStatus() == 3) {
+                                new Thread(() -> {
+                                    try {
+                                        Thread.sleep(1500);
+                                    } catch (InterruptedException ignored) {}
+                                    if (player != MinecraftClient.getInstance().player) return; // Player has changed, don't send destroy packet
+                                    PacketCallback.EVENT.invoker().onPacketReceived(new EntitiesDestroyS2CPacket(player.getId()));
+                                }).start();
                             }
                     }
                 }
