@@ -1,6 +1,7 @@
 {
   "text.autoconfig.not-enough-spectators.title": "Not Enough Spectators Config",
   "text.autoconfig.not-enough-spectators.option.shouldAnnounceJoins": "Announce Joins",
+  "text.autoconfig.not-enough-spectators.option.enableSpectatorChat": "Enable Spectator Chat",
   "text.autoconfig.not-enough-spectators.option.localPort": "Local Port",
   "text.autoconfig.not-enough-spectators.option.shouldTunnel": "Enable Tunneling",
   "text.autoconfig.not-enough-spectators.option.boreServerHost": "Bore Server"

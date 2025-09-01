@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 public class NotEnoughSpectators implements ModInitializer {
 	public static final String MOD_ID = "not-enough-spectators";
+    public static final String PREFIX = "[NES] ";
 
 	// This logger is used to write text to the console and the log file.
 	// It is considered best practice to use your mod id as the logger's name.

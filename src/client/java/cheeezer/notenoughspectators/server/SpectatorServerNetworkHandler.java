@@ -218,14 +218,14 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
                     ClientPlayerEntity player = MinecraftClient.getInstance().player;
                     if (player != null && NotEnoughSpectatorsClient.getConfig().shouldAnnounceJoins()) {
-                        player.sendMessage(Text.of("[NES] "+this.username+" joined as a spectator!"), false);
+                        player.sendMessage(Text.of(NotEnoughSpectators.PREFIX+this.username+" joined as a spectator!"), false);
                     }
                 }
                 break;
             case NetworkPhase.PLAY:
-                if (packet instanceof ChatMessageC2SPacket chatMessagePacket && chatMessagePacket.chatMessage().equals("tp")) {
-                    // Teleport the spectator to the host player
-                    sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, PlayerPosition.fromEntity(MinecraftClient.getInstance().player), Collections.emptySet()));
+                ClientPlayerEntity player = MinecraftClient.getInstance().player;
+                if (packet instanceof ChatMessageC2SPacket chatMessagePacket && NotEnoughSpectatorsClient.getConfig().enableSpectatorChat() && player != null) {
+                    player.sendMessage(Text.of(String.format("%s<%s> %s", NotEnoughSpectators.PREFIX, username, chatMessagePacket.chatMessage())), false);
                 } else if (packet instanceof PlayerInteractItemC2SPacket) {
                     // Teleport the spectator to the host player
                     sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, PlayerPosition.fromEntity(MinecraftClient.getInstance().player), Collections.emptySet()));
