@@ -217,7 +217,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     }));
 
                     ClientPlayerEntity player = MinecraftClient.getInstance().player;
-                    if (player != null) {
+                    if (player != null && NotEnoughSpectatorsClient.getConfig().shouldAnnounceJoins()) {
                         player.sendMessage(Text.of("[NES] "+this.username+" joined as a spectator!"), false);
                     }
                 }
