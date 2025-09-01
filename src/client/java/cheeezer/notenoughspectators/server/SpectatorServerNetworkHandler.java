@@ -71,7 +71,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
     private String username;
 
     public SpectatorServerNetworkHandler(SpectatorServer server) {
-        this.server = server;
+        server = server;
     }
 
     @Override
@@ -105,7 +105,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                 break;
             case NetworkPhase.LOGIN:
                 if (packet instanceof LoginHelloC2SPacket loginPacket) {
-                    this.username = loginPacket.name();
+                    username = loginPacket.name();
                     context.writeAndFlush(new LoginSuccessS2CPacket(Uuids.getOfflinePlayerProfile(loginPacket.name())));
                 } else if (packet instanceof EnterConfigurationC2SPacket) {
                     phase = NetworkPhase.CONFIGURATION;
@@ -218,7 +218,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
                     ClientPlayerEntity player = MinecraftClient.getInstance().player;
                     if (player != null && NotEnoughSpectatorsClient.getConfig().shouldAnnounceJoins()) {
-                        player.sendMessage(Text.of(NotEnoughSpectators.PREFIX+this.username+" joined as a spectator!"), false);
+                        player.sendMessage(Text.of(NotEnoughSpectators.PREFIX+username+" joined as a spectator!"), false);
                     }
                 }
                 break;
@@ -245,7 +245,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
             }
 
             channel.writeAndFlush(new LoginDisconnectS2CPacket(text));
-            this.channel.close().awaitUninterruptibly();
+            channel.close().awaitUninterruptibly();
         } else {
             transitionInbound(LoginStates.C2S);
         }
@@ -305,7 +305,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
             }
 
             boolean bl = newState.id() == NetworkPhase.LOGIN;
-            syncUninterruptibly(channel.writeAndFlush(encoderTransitioner.andThen(context1 -> this.duringLogin = bl)));
+            syncUninterruptibly(channel.writeAndFlush(encoderTransitioner.andThen(context1 -> duringLogin = bl)));
         }
     }
 
@@ -320,7 +320,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                 decoderTransitioner = decoderTransitioner.andThen(context -> context.pipeline().addAfter("decoder", "bundler", packetBundler));
             }
 
-            syncUninterruptibly(this.channel.writeAndFlush(decoderTransitioner));
+            syncUninterruptibly(channel.writeAndFlush(decoderTransitioner));
         }
     }
 
@@ -329,28 +329,28 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
         if (ex instanceof PacketException) {
             LOGGER.debug("Skipping buf due to errors", ex.getCause());
         } else {
-            boolean bl = !this.errored;
-            this.errored = true;
-            if (this.channel.isOpen()) {
+            boolean bl = !errored;
+            errored = true;
+            if (channel.isOpen()) {
                 if (ex instanceof TimeoutException) {
                     LOGGER.debug("Timeout", ex);
-                    this.disconnect(new DisconnectionInfo(Text.translatable("disconnect.timeout")));
+                    disconnect(new DisconnectionInfo(Text.translatable("disconnect.timeout")));
                 } else {
                     Text text = Text.translatable("disconnect.genericReason", "Internal Exception: " + ex);
                     DisconnectionInfo disconnectionInfo = new DisconnectionInfo(text);
 
                     if (bl) {
                         LOGGER.debug("Failed to sent buf", ex);
-                        Packet<?> buf = this.duringLogin ? new LoginDisconnectS2CPacket(text) : new DisconnectS2CPacket(text);
+                        Packet<?> buf = duringLogin ? new LoginDisconnectS2CPacket(text) : new DisconnectS2CPacket(text);
                         sendPacket(buf);
-                        this.disconnect(disconnectionInfo);
+                        disconnect(disconnectionInfo);
 
-                        if (this.channel != null) {
-                            this.channel.config().setAutoRead(false);
+                        if (channel != null) {
+                            channel.config().setAutoRead(false);
                         }
                     } else {
                         LOGGER.debug("Double fault", ex);
-                        this.disconnect(disconnectionInfo);
+                        disconnect(disconnectionInfo);
                     }
                 }
             }
@@ -359,8 +359,8 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
     private void disconnect(DisconnectionInfo disconnectionInfo) {
         LOGGER.debug("Disconnecting due to: {}", disconnectionInfo.reason());
-        if (this.channel.isOpen()) {
-            this.channel.close().awaitUninterruptibly();
+        if (channel.isOpen()) {
+            channel.close().awaitUninterruptibly();
         } else {
             LOGGER.debug("Channel already closed, not sending disconnect packet");
         }
