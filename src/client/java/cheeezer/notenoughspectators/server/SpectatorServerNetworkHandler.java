@@ -68,6 +68,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
     private PacketCodec codec;
     private boolean duringLogin = false;
     private boolean errored = false;
+    private String username;
 
     public SpectatorServerNetworkHandler(SpectatorServer server) {
         this.server = server;
@@ -104,6 +105,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                 break;
             case NetworkPhase.LOGIN:
                 if (packet instanceof LoginHelloC2SPacket loginPacket) {
+                    this.username = loginPacket.name();
                     context.writeAndFlush(new LoginSuccessS2CPacket(Uuids.getOfflinePlayerProfile(loginPacket.name())));
                 } else if (packet instanceof EnterConfigurationC2SPacket) {
                     phase = NetworkPhase.CONFIGURATION;
@@ -213,6 +215,11 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                             return true;
                         }
                     }));
+
+                    ClientPlayerEntity player = MinecraftClient.getInstance().player;
+                    if (player != null) {
+                        player.sendMessage(Text.of("[NES] "+this.username+" joined as a spectator!"), false);
+                    }
                 }
                 break;
             case NetworkPhase.PLAY:
