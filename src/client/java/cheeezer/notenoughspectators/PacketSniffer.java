@@ -44,6 +44,10 @@ public class PacketSniffer extends ChannelInboundHandlerAdapter {
         CONFIG_PACKETS.add(packet);
     }
 
+    public static void addPlayPacket(ByteBuf byteBuf) {
+        PLAY_PACKETS.add(byteBuf);
+    }
+
     public static long getSeed() {
         return seed;
     }

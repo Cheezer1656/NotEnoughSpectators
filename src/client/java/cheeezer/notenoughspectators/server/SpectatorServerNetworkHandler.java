@@ -218,17 +218,25 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
                     ClientPlayerEntity player = MinecraftClient.getInstance().player;
                     if (player != null && NotEnoughSpectatorsClient.getConfig().shouldAnnounceJoins()) {
-                        player.sendMessage(Text.of(NotEnoughSpectators.PREFIX+username+" joined as a spectator!"), false);
+                        player.sendMessage(Text.of(String.format("[%s] %s joined as a spectator!", NotEnoughSpectators.SHORT_NAME, username)), false);
                     }
                 }
                 break;
             case NetworkPhase.PLAY:
                 ClientPlayerEntity player = MinecraftClient.getInstance().player;
                 if (packet instanceof ChatMessageC2SPacket chatMessagePacket && NotEnoughSpectatorsClient.getConfig().enableSpectatorChat() && player != null) {
-                    player.sendMessage(Text.of(String.format("%s<%s> %s", NotEnoughSpectators.PREFIX, username, chatMessagePacket.chatMessage())), false);
-                } else if (packet instanceof PlayerInteractItemC2SPacket) {
+                    String message = String.format("<%s> %s", username, chatMessagePacket.chatMessage());
+                    player.sendMessage(Text.of(String.format("[%s] %s", NotEnoughSpectators.SHORT_NAME, message)), false);
+                    ProfilelessChatMessageS2CPacket chatPacket = new ProfilelessChatMessageS2CPacket(Text.of(message), MessageType.params(MessageType.SAY_COMMAND, player.getWorld().getRegistryManager(), Text.of(NotEnoughSpectators.SHORT_NAME)));
+                    PacketCallback.EVENT.invoker().onPacketReceived(chatPacket);
+
+                    // Also save in packet store so it shows up for new spectators
+                    ByteBuf byteBuf = Unpooled.buffer();
+                    codec.encode(byteBuf, chatPacket);
+                    PacketSniffer.addPlayPacket(byteBuf);
+                } else if (packet instanceof PlayerInteractItemC2SPacket && player != null) {
                     // Teleport the spectator to the host player
-                    sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, PlayerPosition.fromEntity(MinecraftClient.getInstance().player), Collections.emptySet()));
+                    sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, PlayerPosition.fromEntity(player), Collections.emptySet()));
                 }
         }
         context.fireChannelRead(packet);
