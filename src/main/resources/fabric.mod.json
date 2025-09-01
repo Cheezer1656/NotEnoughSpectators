@@ -20,7 +20,10 @@
 		],
 		"client": [
 			"cheeezer.notenoughspectators.NotEnoughSpectatorsClient"
-		]
+		],
+        "modmenu": [
+          "cheeezer.notenoughspectators.config.NESModMenu"
+        ]
 	},
 	"mixins": [
 		"not-enough-spectators.mixins.json",

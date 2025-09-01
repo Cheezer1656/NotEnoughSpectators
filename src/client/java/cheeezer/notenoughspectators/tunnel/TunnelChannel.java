@@ -1,5 +1,7 @@
 package cheeezer.notenoughspectators.tunnel;
 
+import cheeezer.notenoughspectators.NotEnoughSpectatorsClient;
+
 import java.net.Socket;
 import java.net.SocketException;
 
@@ -18,7 +20,7 @@ public class TunnelChannel extends Thread {
     public void run() {
         try {
             Socket localSocket = new Socket("localhost", localPort);
-            Socket remoteSocket = new Socket(TunnelClient.REMOTE_HOST, TunnelClient.CONTROL_PORT);
+            Socket remoteSocket = new Socket(NotEnoughSpectatorsClient.getConfig().getBoreServerHost(), TunnelClient.CONTROL_PORT);
 
             remoteSocket.getOutputStream().write(("{\"Accept\":\"" + uuid + "\"}\0").getBytes());
 

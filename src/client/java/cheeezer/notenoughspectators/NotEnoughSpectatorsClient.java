@@ -1,10 +1,13 @@
 package cheeezer.notenoughspectators;
 
+import cheeezer.notenoughspectators.config.NESConfigData;
 import cheeezer.notenoughspectators.server.SpectatorServer;
 import cheeezer.notenoughspectators.tunnel.TunnelClient;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
+import me.shedaniel.autoconfig.AutoConfig;
+import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
@@ -17,11 +20,15 @@ import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.arg
 import static net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.literal;
 
 public class NotEnoughSpectatorsClient implements ClientModInitializer {
+    private static NESConfigData config;
     private SpectatorServer server;
     private TunnelClient tunnelClient;
 
     @Override
     public void onInitializeClient() {
+        AutoConfig.register(NESConfigData.class, Toml4jConfigSerializer::new);
+        config = AutoConfig.getConfigHolder(NESConfigData.class).getConfig();
+
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             final LiteralCommandNode<FabricClientCommandSource> nesNode = dispatcher.register(literal("notenoughspectators").then(literal("share").executes(this::runShareCommand).then(argument("localPort", IntegerArgumentType.integer(1, 65535)).executes(this::runShareCommand))).then(literal("stop").executes(context -> {
                 if (server == null) {
@@ -37,6 +44,10 @@ public class NotEnoughSpectatorsClient implements ClientModInitializer {
         });
     }
 
+    public static NESConfigData getConfig() {
+        return config;
+    }
+
     private int runShareCommand(CommandContext<FabricClientCommandSource> context) {
         new Thread(() -> {
             if (server != null) {
@@ -48,12 +59,12 @@ public class NotEnoughSpectatorsClient implements ClientModInitializer {
                 try {
                     localPort = IntegerArgumentType.getInteger(context, "localPort");
                 } catch (IllegalArgumentException ignored) {
-                    localPort = 25566; // Default port if not specified
+                    localPort = config.getLocalPort(); // Default port if not specified
                 }
                 startServer(localPort);
                 int port = startTunnelClient(localPort);
 
-                String address = String.format("%s:%d", TunnelClient.REMOTE_HOST, port);
+                String address = String.format("%s:%d", NotEnoughSpectatorsClient.getConfig().getBoreServerHost(), port);
                 context.getSource().sendFeedback(Text.literal("Server started! Join at ").append(Text.literal(address).setStyle(Style.EMPTY.withUnderline(true).withHoverEvent(new HoverEvent.ShowText(Text.literal("Click to copy"))).withClickEvent(new ClickEvent.CopyToClipboard(address)))));
             } catch (Exception e) {
                 context.getSource().sendError(Text.literal("Failed to start server: " + e.getMessage()));

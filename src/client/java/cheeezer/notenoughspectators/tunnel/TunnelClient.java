@@ -1,6 +1,7 @@
 package cheeezer.notenoughspectators.tunnel;
 
 import cheeezer.notenoughspectators.NotEnoughSpectators;
+import cheeezer.notenoughspectators.NotEnoughSpectatorsClient;
 import com.google.gson.JsonParser;
 
 import java.io.BufferedReader;
@@ -9,7 +10,6 @@ import java.io.PrintWriter;
 import java.net.Socket;
 
 public class TunnelClient extends Thread {
-    public static final String REMOTE_HOST = "bore.pub";
     public static final int CONTROL_PORT = 7835;
     private final int localPort;
     private final int remotePort;
@@ -20,7 +20,7 @@ public class TunnelClient extends Thread {
         super("TunnelClient");
 
         this.localPort = port;
-        socket = new Socket(REMOTE_HOST, CONTROL_PORT);
+        socket = new Socket(NotEnoughSpectatorsClient.getConfig().getBoreServerHost(), CONTROL_PORT);
         PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
         in = new BufferedReader(new java.io.InputStreamReader(socket.getInputStream()));
 

@@ -1,0 +1,5 @@
+{
+  "text.autoconfig.not-enough-spectators.title": "Not Enough Spectators Config",
+  "text.autoconfig.not-enough-spectators.option.localPort": "Local Port",
+  "text.autoconfig.not-enough-spectators.option.boreServerHost": "Bore Server"
+}
