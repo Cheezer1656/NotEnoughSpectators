@@ -62,9 +62,14 @@ public class NotEnoughSpectatorsClient implements ClientModInitializer {
                     localPort = config.getLocalPort(); // Default port if not specified
                 }
                 startServer(localPort);
-                int port = startTunnelClient(localPort);
+                String address;
+                if (config.shouldTunnel()) {
+                    int port = startTunnelClient(localPort);
+                    address = String.format("%s:%d", NotEnoughSpectatorsClient.getConfig().getBoreServerHost(), port);
+                } else {
+                    address = String.format("localhost:%d", localPort);
+                }
 
-                String address = String.format("%s:%d", NotEnoughSpectatorsClient.getConfig().getBoreServerHost(), port);
                 context.getSource().sendFeedback(Text.literal("Server started! Join at ").append(Text.literal(address).setStyle(Style.EMPTY.withUnderline(true).withHoverEvent(new HoverEvent.ShowText(Text.literal("Click to copy"))).withClickEvent(new ClickEvent.CopyToClipboard(address)))));
             } catch (Exception e) {
                 context.getSource().sendError(Text.literal("Failed to start server: " + e.getMessage()));
