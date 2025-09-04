@@ -5,6 +5,9 @@ A Minecraft mod that allows you to invite anybody to watch your gameplay in an i
 
 [![Demo Video](https://img.youtube.com/vi/GzsgztWwvxc/0.jpg)](https://www.youtube.com/watch?v=GzsgztWwvxc)
 
+## Downloads
+The latest stable release is on [Modrinth](https://modrinth.com/mod/notenoughspectators).
+
 ## How to use
 1. Add this to your Fabric mods folder
 2. Start up your game
