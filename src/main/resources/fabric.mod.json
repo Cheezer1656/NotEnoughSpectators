@@ -35,8 +35,10 @@
 	"accessWidener" : "not-enough-spectators.accesswidener",
 	"depends": {
 		"fabricloader": ">=0.16.14",
-		"minecraft": "~1.21.6",
+		"minecraft": "~1.21.8",
 		"java": ">=21",
-		"fabric-api": "*"
+		"fabric-api": "*",
+        "cloth-config": ">=19.0.147",
+        "modmenu": ">=15.0.0-0"
 	}
 }
