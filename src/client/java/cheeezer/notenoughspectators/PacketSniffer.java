@@ -117,7 +117,7 @@ public class PacketSniffer extends ChannelInboundHandlerAdapter {
                             ClientPlayerEntity player = MinecraftClient.getInstance().player;
                             if (packet instanceof GameJoinS2CPacket) {
                                 queue = true;
-                            } else if (packet instanceof EntityStatusS2CPacket entityStatusPacket && player != null && entityStatusPacket.getEntity(player.getWorld()) == player && entityStatusPacket.getStatus() == 3) {
+                            } else if (packet instanceof EntityStatusS2CPacket entityStatusPacket && player != null && entityStatusPacket.getEntity(player.getEntityWorld()) == player && entityStatusPacket.getStatus() == 3) {
                                 new Thread(() -> {
                                     try {
                                         Thread.sleep(1500);

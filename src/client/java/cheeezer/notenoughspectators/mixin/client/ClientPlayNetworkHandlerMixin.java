@@ -4,7 +4,7 @@ import cheeezer.notenoughspectators.NESUtil;
 import cheeezer.notenoughspectators.PlayerTaskQueue;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.entity.player.PlayerPosition;
+import net.minecraft.entity.EntityPosition;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,7 +20,7 @@ public class ClientPlayNetworkHandlerMixin {
     @Inject(method = "onPlayerPositionLook", at = @At("TAIL"))
     public void onPlayerPositionLook(CallbackInfo ci) {
         if (MinecraftClient.getInstance().player == null) return;
-        PlayerTaskQueue.processPositionTasks(PlayerPosition.fromEntity(MinecraftClient.getInstance().player));
+        PlayerTaskQueue.processPositionTasks(EntityPosition.fromEntity(MinecraftClient.getInstance().player));
     }
 
     @Inject(method = "onInventory", at = @At("TAIL"))

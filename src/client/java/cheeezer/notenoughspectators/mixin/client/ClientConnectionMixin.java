@@ -90,7 +90,7 @@ public abstract class ClientConnectionMixin {
         } else if (packet instanceof UpdateSelectedSlotC2SPacket slotUpdatePacket && NESUtil.isEquipmentSlot(slotUpdatePacket.getSelectedSlot() + 36) || packet instanceof CreativeInventoryActionC2SPacket invActionPacket && NESUtil.isEquipmentSlot(invActionPacket.slot())) {
             NESUtil.updatePlayerEquipment();
         } else if (packet instanceof ClientStatusC2SPacket statusPacket && statusPacket.getMode() == ClientStatusC2SPacket.Mode.PERFORM_RESPAWN) {
-            PacketCallback.EVENT.invoker().onPacketReceived(new EntitySpawnS2CPacket(player, 0, BlockPos.ofFloored(player.getPos())));
+            PacketCallback.EVENT.invoker().onPacketReceived(new EntitySpawnS2CPacket(player, 0, BlockPos.ofFloored(player.getEntityPos())));
         }
     }
 

@@ -14,9 +14,9 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.component.ComponentChanges;
 import net.minecraft.component.DataComponentTypes;
+import net.minecraft.entity.EntityPosition;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerAbilities;
-import net.minecraft.entity.player.PlayerPosition;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.network.*;
@@ -165,9 +165,9 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                                 DynamicRegistryManager.Immutable newRegistryManager = MinecraftClient.getInstance().getNetworkHandler().getRegistryManager();
                                 codec = PlayStateFactories.S2C.bind(RegistryByteBuf.makeFactory(newRegistryManager)).codec();
                                 // Alert the spectator player that they are switching servers
-                                sendPacket(new ProfilelessChatMessageS2CPacket(Text.of("Switching server..."), MessageType.params(MessageType.SAY_COMMAND, player.getWorld().getRegistryManager(), Text.of("NotEnoughSpectators"))));
+                                sendPacket(new ProfilelessChatMessageS2CPacket(Text.of("Switching server..."), MessageType.params(MessageType.SAY_COMMAND, player.getRegistryManager(), Text.of("NotEnoughSpectators"))));
                                 // Respawn spectator player
-                                World world = player.getWorld();
+                                World world = player.getEntityWorld();
                                 sendPacket(new PlayerRespawnS2CPacket(new CommonPlayerSpawnInfo(world.getDimensionEntry(), world.getRegistryKey(), PacketSniffer.getSeed(), GameMode.CREATIVE, null, world.isDebugWorld(), false, Optional.empty(), 0, 0), (byte) 0));
                                 // Reconfigure the spectator client
                                 configureClient();
@@ -189,17 +189,17 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                         }
                         switch (movementType) {
                             case MovementCallback.MovementType.POSITION_AND_ROTATION -> {
-                                Vec3d delta = player.getPos().subtract(player.lastX, player.lastY, player.lastZ);
+                                Vec3d delta = player.getEntityPos().subtract(player.lastX, player.lastY, player.lastZ);
                                 if (delta.lengthSquared() != 0.0) {
                                     delta = delta.multiply(4096.0);
                                     sendPacket(new EntityS2CPacket.RotateAndMoveRelative(player.getId(), (short) delta.x, (short) delta.y, (short) delta.z, MathHelper.packDegrees(player.getYaw()), MathHelper.packDegrees(player.getPitch()), player.isOnGround()));
                                 } else {
-                                    sendPacket(new EntityPositionSyncS2CPacket(player.getId(), PlayerPosition.fromEntity(player), player.isOnGround()));
+                                    sendPacket(new EntityPositionSyncS2CPacket(player.getId(), EntityPosition.fromEntity(player), player.isOnGround()));
                                 }
                                 sendPacket(new EntitySetHeadYawS2CPacket(player, MathHelper.packDegrees(player.headYaw)));
                             }
                             case MovementCallback.MovementType.POSITION -> {
-                                Vec3d delta = player.getPos().subtract(player.lastX, player.lastY, player.lastZ).multiply(4096.0);
+                                Vec3d delta = player.getEntityPos().subtract(player.lastX, player.lastY, player.lastZ).multiply(4096.0);
                                 sendPacket(new EntityS2CPacket.MoveRelative(player.getId(), (short) delta.x, (short) delta.y, (short) delta.z, player.isOnGround()));
                             }
                             case MovementCallback.MovementType.ROTATION -> {
@@ -227,7 +227,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                 if (packet instanceof ChatMessageC2SPacket chatMessagePacket && NotEnoughSpectatorsClient.getConfig().enableSpectatorChat() && player != null) {
                     String message = String.format("<%s> %s", username, chatMessagePacket.chatMessage());
                     player.sendMessage(Text.of(String.format("[%s] %s", NotEnoughSpectators.SHORT_NAME, message)), false);
-                    ProfilelessChatMessageS2CPacket chatPacket = new ProfilelessChatMessageS2CPacket(Text.of(message), MessageType.params(MessageType.SAY_COMMAND, player.getWorld().getRegistryManager(), Text.of(NotEnoughSpectators.SHORT_NAME)));
+                    ProfilelessChatMessageS2CPacket chatPacket = new ProfilelessChatMessageS2CPacket(Text.of(message), MessageType.params(MessageType.SAY_COMMAND, player.getRegistryManager(), Text.of(NotEnoughSpectators.SHORT_NAME)));
                     PacketCallback.EVENT.invoker().onPacketReceived(chatPacket);
 
                     // Also save in packet store so it shows up for new spectators
@@ -236,7 +236,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                     PacketSniffer.addPlayPacket(byteBuf);
                 } else if (packet instanceof PlayerInteractItemC2SPacket && player != null) {
                     // Teleport the spectator to the host player
-                    sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, PlayerPosition.fromEntity(player), Collections.emptySet()));
+                    sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, EntityPosition.fromEntity(player), Collections.emptySet()));
                 }
         }
         context.fireChannelRead(packet);
@@ -274,8 +274,8 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
     private void configureClient() {
         // Spawn the host player
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
-        sendPacket(new EntitySpawnS2CPacket(player, 0, BlockPos.ofFloored(player.getPos())));
-        sendPacket(new EntityPositionSyncS2CPacket(player.getId(), PlayerPosition.fromEntity(player), true));
+        sendPacket(new EntitySpawnS2CPacket(player, 0, player.getBlockPos()));
+        sendPacket(new EntityPositionSyncS2CPacket(player.getId(), EntityPosition.fromEntity(player), true));
         new Thread(() -> {
             try {
                 Thread.sleep(100);
@@ -292,7 +292,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
         sendPacket(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.GAME_MODE_CHANGED, 1.0F));
 
         // Teleport the spectator to the host player
-        sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, PlayerPosition.fromEntity(player), Collections.emptySet()));
+        sendPacket(new PlayerPositionLookS2CPacket(Integer.MAX_VALUE, EntityPosition.fromEntity(player), Collections.emptySet()));
 
         // Give the spectator a compass
         sendPacket(new SetPlayerInventoryS2CPacket(EquipmentSlot.MAINHAND.getIndex(), new ItemStack(RegistryEntry.of(Items.COMPASS), 1, ComponentChanges.builder().add(DataComponentTypes.ITEM_NAME, Text.of("Teleport to Host")).build())));
