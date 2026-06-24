@@ -71,7 +71,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
     private String username;
 
     public SpectatorServerNetworkHandler(SpectatorServer server) {
-        server = server;
+        this.server = server;
     }
 
     @Override
@@ -218,7 +218,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
 
                     ClientPlayerEntity player = MinecraftClient.getInstance().player;
                     if (player != null && NotEnoughSpectatorsClient.getConfig().shouldAnnounceJoins()) {
-                        player.sendMessage(Text.of(String.format("[%s] %s joined as a spectator!", NotEnoughSpectators.SHORT_NAME, username)), false);
+                        MinecraftClient.getInstance().execute(() -> player.sendMessage(Text.of(String.format("[%s] %s joined as a spectator!", NotEnoughSpectators.SHORT_NAME, username)), false));
                     }
                 }
                 break;
@@ -226,7 +226,7 @@ public class SpectatorServerNetworkHandler extends SimpleChannelInboundHandler<P
                 ClientPlayerEntity player = MinecraftClient.getInstance().player;
                 if (packet instanceof ChatMessageC2SPacket chatMessagePacket && NotEnoughSpectatorsClient.getConfig().enableSpectatorChat() && player != null) {
                     String message = String.format("<%s> %s", username, chatMessagePacket.chatMessage());
-                    player.sendMessage(Text.of(String.format("[%s] %s", NotEnoughSpectators.SHORT_NAME, message)), false);
+                    MinecraftClient.getInstance().execute(() -> player.sendMessage(Text.of(String.format("[%s] %s", NotEnoughSpectators.SHORT_NAME, message)), false));
                     ProfilelessChatMessageS2CPacket chatPacket = new ProfilelessChatMessageS2CPacket(Text.of(message), MessageType.params(MessageType.SAY_COMMAND, player.getRegistryManager(), Text.of(NotEnoughSpectators.SHORT_NAME)));
                     PacketCallback.EVENT.invoker().onPacketReceived(chatPacket);
 
